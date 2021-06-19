@@ -1,0 +1,6 @@
+backup/
+data/
+
+*.txt
+*.xls
+*.xlsx
