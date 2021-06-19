@@ -12,21 +12,21 @@ class Cell {
     return this.col + this.row
   }
 
-  getPosNextNCols(n) {
+  getNextNCols(n) {
     return new Cell(String.fromCharCode(this.col.charCodeAt() + n), this.row)
   }
 
-  getPosNextNRows(n) {
+  getNextNRows(n) {
     return new Cell(this.col, this.row + n)
   }
 
   getRangeNextNCols(n) {
-    let endCell = this.getPosNextNCols(n)
+    let endCell = this.getNextNCols(n)
     return this.getPos() + ":" + endCell.getPos()
   }
 
   getRangeNextNRows(n) {
-    let endCell = this.getPosNextNRows(n)
+    let endCell = this.getNextNRows(n)
     return this.getPos() + ":" + endCell.getPos()
   }
 
@@ -59,19 +59,21 @@ class Cell {
   }
 }
 
-const studentQueueCells = [
-  new Cell("B", 30),
-  new Cell("I", 30),
-  new Cell("P", 30)
+const firstCell_StudentQueues = [
+  new Cell("B", 24),
+  // new Cell("B", 30),
+  // new Cell("I", 30),
+  // new Cell("P", 30)
 ]
 
-const chosenStudentListCells = [
-  new Cell("B", 14),
-  new Cell("B", 21)
+const firstCell_ChosenStudentLists = [
+  new Cell("B", 13),
+  // new Cell("B", 14),
+  // new Cell("B", 21)
 ]
 
-function assignStudentsToSheets(spreadsheetTargetUrl) {
-  var ssTarget = SpreadsheetApp.openByUrl(spreadsheetTargetUrl);
+function assignStudentsToSheets(spreadsheetAssignmentUrl) {
+  var ssTarget = SpreadsheetApp.openByUrl(spreadsheetAssignmentUrl);
 
   let formResponsesSheet = ssTarget.getSheetByName("Form Responses");
   let table = formResponsesSheet.getDataRange().getValues();
@@ -86,8 +88,8 @@ function assignStudentsToSheets(spreadsheetTargetUrl) {
   var chosenProfessorColNames = Object.keys(col2Idx).filter(
     (key) => {return key.toLowerCase().startsWith("pilihan dosen")}
   );
-  if (chosenProfessorColNames.length > studentQueueCells) {
-    console.warn(`chosenProfessorColNames.length > studentQueueCells.length! (${chosenProfessorColNames.length} vs ${studentQueueCells.length})`);
+  if (chosenProfessorColNames.length > firstCell_StudentQueues) {
+    console.warn(`chosenProfessorColNames.length > firstCell_StudentQueues.length! (${chosenProfessorColNames.length} vs ${firstCell_StudentQueues.length})`);
   }
   console.log("chosenProfessorColNames is:", chosenProfessorColNames)
   
@@ -114,20 +116,22 @@ function assignStudentsToSheets(spreadsheetTargetUrl) {
         )
         continue;
       }
-      let nextEmptyCellInColumn = studentQueueCells[i].getNextEmptyRow(professorSheet)
+      let nextEmptyRowInColumn = firstCell_StudentQueues[i].getNextEmptyRow(professorSheet)
 
-      let rangeToInsert = nextEmptyCellInColumn.getRangeNextNCols(valuesToAppend[0].length - 1)
+      let rangeToInsert = nextEmptyRowInColumn.getRangeNextNCols(valuesToAppend[0].length - 1)
       professorSheet.getRange(rangeToInsert).setValues(valuesToAppend)
       Logger.log("[INFO]: Successfully append '%s' to Sheet '%s!%s'", valuesToAppend, professorName, rangeToInsert)
     }
   }
 }
 
-function clearAllProfessorSheets(spreadsheetTargetUrl) {
-  var ssTarget = SpreadsheetApp.openByUrl(spreadsheetTargetUrl);
+function clearAllProfessorSheets(spreadsheetAssignmentUrl) {
+  var ssTarget = SpreadsheetApp.openByUrl(spreadsheetAssignmentUrl);
 
-  var professorSheets = ssTarget.getSheets().slice(2);
-  if (professorSheets.length == 0) Logger.log("[INFO] No professor sheets to clear")
+  var professorSheets = ssTarget.getSheets();
+  if (professorSheets.length == 0)
+    Logger.log("[INFO] No professor sheets to clear");
+
   for(var professorSheet of professorSheets) {
     Logger.log("[INFO] Clearing sheet: '%s'", professorSheet.getName())
     
@@ -137,19 +141,15 @@ function clearAllProfessorSheets(spreadsheetTargetUrl) {
       continue
     }
 
-    for(var studentQueueCell of studentQueueCells) {
-      let laststudentQueueCell = studentQueueCell.getNextEmptyCol(professorSheet);
-      laststudentQueueCell.row = professorSheet.getMaxRows();
-      let rangeToClear = studentQueueCell.getPos() + ":" + laststudentQueueCell.getPos();
+    for(var firstCell_StudentQueue of firstCell_StudentQueues) {
+      let botRightCell_StudentQueue = firstCell_StudentQueue.getNextEmptyCol(professorSheet);
+      botRightCell_StudentQueue.row = professorSheet.getMaxRows();
+      let rangeToClear = firstCell_StudentQueue.getPos() + ":" + botRightCell_StudentQueue.getPos();
       professorSheet.getRange(rangeToClear).clear({contentsOnly: true});
     }
-    for(var chosenStudentListCell of chosenStudentListCells) {
-      let rangeToClear = chosenStudentListCell.getPos() + ":" + chosenStudentListCell.getNextEmptyRow(professorSheet).getPos();
+    for(var firstCell_ChosenStudentList of firstCell_ChosenStudentLists) {
+      let rangeToClear = firstCell_ChosenStudentList.getPos() + ":" + firstCell_ChosenStudentList.getNextEmptyRow(professorSheet).getPos();
       professorSheet.getRange(rangeToClear).clear({contentsOnly: true});
     }
   }
-}
-
-function helloWorld(text) {
-  SpreadsheetApp.getActiveSpreadsheet().toast("Toast Message", text);
 }
