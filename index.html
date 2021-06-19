@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Pendaftaran Dosbing Data Controller</title>
+
+<!--    Icons-->
+<!--    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'images/icon/apple-touch-icon.png' %}">-->
+<!--    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/icon/favicon-32x32.png' %}">-->
+<!--    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'images/icon/favicon-16x16.png' %}">-->
+<!--    <link rel="manifest" href="{% static 'images/icon/site.webmanifest' %}">-->
+<!--    <link rel="mask-icon" href="{% static 'images/icon/safari-pinned-tab.svg'" color="#5bbad5">-->
+<!--    <meta name="msapplication-TileColor" content="#da532c">-->
+<!--    <meta name="theme-color" content="#ffffff">-->
+
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+    <!-- <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.0.8/css/all.css"
+          integrity="sha384-3AB7yXWz4OeoZcPbieVW64vVXEwADiYyAEhwilzWsLw+9FgqpyjjStpPnpBO8o8S" crossorigin="anonymous"> -->
+
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-md navbar-light bg-light fixed-top">
+      <a class="navbar-brand" href="<?= serviceUrl ?>"><i class="fas fa-home mr-1"></i>Pendaftaran Dosbing Data Controller</a>
+      <!-- <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <ul class="mr-auto navbar-nav">
+          <li><a class="nav-link" href=""><i class="fas fa-tools mr-1"></i>Admin</a></li>
+          <li><a class="nav-link" href=""><i class="far fa-clipboard mr-1"></i>Transaction</a></li>
+        </ul>
+        <ul class="navbar-nav">
+          <li><a class="nav-link" href=""><i class="fas fa-tachometer-alt"></i> Management</a></li>
+          <li><a class="nav-link" href="#"><i class="fas fa-user"></i> {{ user.first_name }} {{ user.last_name }} </a></li>
+        </ul>
+      </div> -->
+    </nav>
+    <main class="container mt-5 pt-3">
+
+        <? if (status == 'ERROR') {?>
+            <div class="alert alert-danger alert-dismissable mt-4" role="alert">
+                <a class="panel-close close" data-dismiss="alert">×</a> <?= statusMessage ?>
+            </div>
+        <? } else if (status == 'OK') {?>
+            <div class="alert alert-success alert-dismissable mt-4" role="alert">
+              <a class="panel-close close" data-dismiss="alert">×</a> <?= statusMessage ?>
+            </div>
+        <? } ?>
+
+        <div class="container">
+            <div class="jumbotron">
+                <h1>Welcome to Pendaftaran Dosbing Data Controller!</h1>
+                <h3>A web app to manage spreadsheet data for <i>pendaftaran dosbing</i></h3>
+                <h5>Fill the following text boxes, then press submit!</h5>
+            </div>
+        </div>
+
+        <form action="<?= serviceUrl ?>" method="post" enctype="multipart/form-data">
+          <h4>Operation</h4>
+          <div class="form-row mb-4">
+              <select name="operation_type" placeholder="Operation Type" class=" form-control" id="id_operation_type">
+                  <option value="updateForm" selected="">Update Form</option>
+                  <option value="generateProfessorSheets">Generate Professor Sheets</option>
+                  <option value="assignStudentsToSheets">Assign Students from Form Response to Professor Sheets</option>
+                  <option value="clearAllProfessorSheets">Clear All Professor Sheets</option>
+                  <option value="deleteAllProfessorSheets">Delete All Professor Sheets</option>
+                </select>
+          </div>
+          <h4>Spreadsheets</h4>
+          <div class="form-row mb-4">
+              <div class="form-group col-12">
+                  <label class="form-control-label" for="id_spreadsheet_source_url">Database Spreadsheet URL</label>
+                  <input type="text" name="spreadsheet_source_url" value="https://docs.google.com/spreadsheets/d/1bhuvOg6tJOLQyvvyeXDEAUaGwG_dfgavuY6j0fWRjeg/edit" placeholder="Database Spreadsheet URL" class=" form-control" required="" id="id_spreadsheet_source_url">
+                  <small class="form-text text-muted">Copy this value from your Google Spreadsheet URL</small>
+              </div>
+              <div class="form-group col-12">
+                  <label class="form-control-label" for="id_spreadsheet_target_url">Target Spreadsheet URL</label>
+                  <input type="text" name="spreadsheet_target_url" value="https://docs.google.com/spreadsheets/d/1TIiC1p0vMptRFfcFISsTG6sJx-W_1Fo8cPD2FJTGv5s/edit" placeholder="Target Spreadsheet URL" class=" form-control" required="" id="id_spreadsheet_target_url">
+                  <small class="form-text text-muted">Copy this value from your Google Spreadsheet URL</small>
+              </div>
+          </div>
+          <div id="id_form_div">
+            <h4>Forms</h4>
+            <div class="form-row mb-4">
+                <div class="form-group col-12">
+                    <label class="form-control-label" for="id_form_target_url">Target Form URL</label>
+                    <input type="text" name="form_target_url" value="https://docs.google.com/forms/d/1FBWSBfQhAif5CE105G13HPGwekNckZjzMh9eleLa28M/edit" placeholder="Target Form URL" class=" form-control" required="" id="id_form_target_url">
+                    <small class="form-text text-muted">Copy this value from your Google Form URL</small>
+                </div>
+                <div class="form-group col-4">
+                    <label class="form-control-label" for="id_name_dropdown_id">Student Name Dropdown ID</label>
+                    <input type="text" name="name_dropdown_id" value="52944945" placeholder="Student Name Dropdown ID" class=" form-control" required="" id="id_name_dropdown_id">
+                    <small class="form-text text-muted">Find this value by using "Inspect Element" to the field in the Form Editor</small>
+                </div>
+                <div class="form-group col-4">
+                    <label class="form-control-label" for="id_topic_dropdown_ids">Topic Dropdown IDs</label>
+                    <input type="text" name="topic_dropdown_ids" value="2083436530,25904452,313624459" placeholder="Topic Dropdown IDs" class=" form-control" required="" id="id_topic_dropdown_ids">
+                    <small class="form-text text-muted">Find these value by using "Inspect Element" to the fields in the Form Editor. Separated by comma.</small>
+                </div>
+                <div class="form-group col-4">
+                    <label class="form-control-label" for="id_professor_dropdown_id">Professor Dropdown IDs</label>
+                    <input type="text" name="professor_dropdown_ids" value="1187134166" placeholder="Professor Dropdown IDs" class=" form-control" required="" id="id_professor_dropdown_id">
+                    <small class="form-text text-muted">Find these value by using "Inspect Element" to the fields in the Form Editor. Separated by comma.</small>
+                </div>
+            </div>
+          </div>
+            
+          <!-- Confirmation Modal -->
+          <div class="modal fade" id="id_confirmation_modal" tabindex="-1" role="dialog" aria-labelledby="id_confirmation_modal_title" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered" role="document">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title" id="id_confirmation_modal_title">Confirmation</h5>
+                  <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                  </button>
+                </div>
+                <div class="modal-body" id="id_confirmation_modal_body">
+                  Confirm operation ""?
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                  <button type="submit" class="btn btn-primary" value="Yes">Yes</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <button id="id_submit_button" type="button" class="btn btn-primary" data-toggle="modal" data-target="#id_confirmation_modal">Submit</button>
+        </form>
+
+    </main>
+    <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js" integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js" integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous"></script>
+    <?!= include("javascript"); ?>
+
+  </body>
+</html>

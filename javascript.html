@@ -1,0 +1,32 @@
+<script>
+  String.prototype.format = function() {
+  a = this;
+  for (k in arguments) {
+    a = a.replace('{' + k + '}', arguments[k])
+  }
+  return a
+  }
+
+  $(document).ready(function() {
+  let submitButton = $('#id_submit_button');
+  submitButton.click((e) => {
+  let selectedOptTypeText = $('#id_operation_type option:selected').text();
+  let loweredSelectedOptionText = selectedOptTypeText.toLowerCase();
+  let additionalMessage = ""
+  if (loweredSelectedOptionText.includes('delete') || loweredSelectedOptionText.includes ('clear')) {
+    additionalMessage = "</br>Your data will be DELETED or CLEARED.</br><b>You cannot undo this action</b>."
+  }
+  let modalBody = 'Are you sure to execute <b>"{0}"</b>?{1}'.format(selectedOptTypeText, additionalMessage)
+  $('#id_confirmation_modal_body').html(modalBody)
+  })
+
+  let operationTypeSelect = $('#id_operation_type');
+  operationTypeSelect.change((e) => {
+  let selectedOptTypeText = $('#id_operation_type option:selected').val();
+  if (selectedOptTypeText != "updateForm") {
+    
+  }
+  })
+  })
+</script>
+  
