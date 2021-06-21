@@ -62,9 +62,11 @@
           <h4>Operation</h4>
           <div class="form-row mb-4">
               <select name="operation_type" placeholder="Operation Type" class=" form-control" id="id_operation_type">
-                  <option value="updateForm" selected="">Update Form</option>
-                  <option value="generateProfessorSheets">Generate Professor Sheets</option>
+                  <option value="populateFormDropdowns" selected="">Prepare Form Dropdowns</option>
+                  <option value="prepareResponseSheet">Prepare Response Sheets</option>
                   <option value="assignStudentsToSheets">Assign Students from Form Response to Professor Sheets</option>
+                  <option value="escalateAllUsersAccess">Escalate All Users Access</option>
+                  <option value="deescalateAllUsersAccess">Deescalate All Users Access</option>
                   <option value="clearAllProfessorSheets">Clear All Professor Sheets</option>
                   <option value="deleteAllProfessorSheets">Delete All Professor Sheets</option>
                 </select>
@@ -73,7 +75,7 @@
           <div class="form-row mb-4">
               <div class="form-group col-12">
                   <label class="form-control-label" for="id_spreadsheet_database_url">Database Spreadsheet URL</label>
-                  <input type="text" name="spreadsheet_database_url" value="https://docs.google.com/spreadsheets/d/1bhuvOg6tJOLQyvvyeXDEAUaGwG_dfgavuY6j0fWRjeg/edit" placeholder="Database Spreadsheet URL" class=" form-control" required="" id="id_spreadsheet_database_url">
+                  <input type="text" name="spreadsheet_database_url" value="https://docs.google.com/spreadsheets/d/1bhuvOg6tJOLQyvvyeXDEAUaGwG_dfgavuY6j0fWRjeg/edit" placeholder="Example: https://docs.google.com/spreadsheets/d/1bhuvOg6tJOLQyvvyeXDEAUaGwG_dfgavuY6j0fWRjeg/edit" class=" form-control" required="" id="id_spreadsheet_database_url">
                   <small class="form-text text-muted">Copy this value from your Google Spreadsheet URL</small>
               </div>
           </div>
@@ -81,7 +83,7 @@
           <div class="form-row mb-4">
               <div class="form-group col-12">
                   <label class="form-control-label" for="id_batch_name">Batch Name</label>
-                  <input type="text" name="batch_name" value="Batch001" placeholder="Batch Name" class=" form-control" required="" id="id_batch_name">
+                  <input type="text" name="batch_name" value="Batch-A-001" placeholder="Example: Batch-A-001" class=" form-control" required="" id="id_batch_name">
                   <small class="form-text text-muted">The registration batch group</small>
               </div>
           </div>

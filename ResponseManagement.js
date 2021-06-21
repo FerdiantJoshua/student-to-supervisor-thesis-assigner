@@ -1,73 +1,12 @@
-class Cell {
-  constructor(col='A', row=1) {
-    this.col = col.toUpperCase()
-    this.row = row
-  }
-
-  getNumberRepr() {
-    return [this.col.charCodeAt() - 64, this.row]
-  }
-
-  getPos() {
-    return this.col + this.row
-  }
-
-  getNextNCols(n) {
-    return new Cell(String.fromCharCode(this.col.charCodeAt() + n), this.row)
-  }
-
-  getNextNRows(n) {
-    return new Cell(this.col, this.row + n)
-  }
-
-  getRangeNextNCols(n) {
-    let endCell = this.getNextNCols(n)
-    return this.getPos() + ":" + endCell.getPos()
-  }
-
-  getRangeNextNRows(n) {
-    let endCell = this.getNextNRows(n)
-    return this.getPos() + ":" + endCell.getPos()
-  }
-
-  getRangeFullCol() {
-    return this.getPos() + ":" + this.col
-  }
-
-  getRangeFullRow() {
-    return this.getPos() + ":" + this.row
-  }
-
-  getNextEmptyCol(sheet) {
-    let fullRow = sheet.getRange(this.getRangeFullRow());
-    let values = fullRow.getValues();
-    let ct = 0;
-    while ( values[0][ct] != "" ) {
-      ct++;
-    }
-    return new Cell(String.fromCharCode(this.col.charCodeAt() + ct), this.row);
-  }
-
-  getNextEmptyRow(sheet) {
-    let fullColumn = sheet.getRange(this.getRangeFullCol());
-    let values = fullColumn.getValues();
-    let ct = 0;
-    while ( values[ct] && values[ct][0] != "" ) {
-      ct++;
-    }
-    return new Cell(this.col, this.row + ct);
-  }
-}
-
 const firstCell_StudentQueues = [
-  new Cell("B", 24),
+  new Cell("C", 25),
   // new Cell("B", 30),
   // new Cell("I", 30),
   // new Cell("P", 30)
 ]
 
 const firstCell_ChosenStudentLists = [
-  new Cell("B", 13),
+  new Cell("C", 13),
   // new Cell("B", 14),
   // new Cell("B", 21)
 ]
@@ -75,13 +14,35 @@ const firstCell_ChosenStudentLists = [
 function assignStudentsToSheets(spreadsheetAssignmentUrl) {
   var ssTarget = SpreadsheetApp.openByUrl(spreadsheetAssignmentUrl);
 
+  // TERMINATE IF the spreadsheets has NOT been PREPARED
+  if (ssTarget.getNumSheets() <= 2) {
+    throw new UnpreparedSpreadsheetException(
+      `Spreadsheet has not been prepared yet! Please run operation "Prepare Response Sheets" first.`,
+      {"spreadsheetAssignmentUrl": spreadsheetAssignmentUrl}
+    );
+  }
+
+  // TERMINATE IF any of professor sheet's student queues IS NOT EMPTY
+  var professorSheets = ssTarget.getSheets();
+  for(let professorSheet of professorSheets) {
+    if (_isSheetNonData(professorSheet.getName())) {
+      continue;
+    }
+    for(var firstCell_StudentQueue of firstCell_StudentQueues) {
+      let firstCellValue = professorSheet.getRange(firstCell_StudentQueue.getPos()).getValues();
+      if (firstCellValue[0][0] != "") {
+        throw new StudentsAlreadyAssignedException(
+          `Students in spreadsheet are already assigned! If you WANT TO REASSIGN students, run operation "Clear All Professor Sheets" first.`,
+          {"spreadsheetAssignmentUrl": spreadsheetAssignmentUrl}
+        );
+      }
+    }
+  }
+
   let formResponsesSheet = ssTarget.getSheetByName("Form Responses");
   let table = formResponsesSheet.getDataRange().getValues();
 
-  var idx2Col = table[0];
-  var col2Idx = {}
-  for(var i = 0; i < idx2Col.length; i++)
-    col2Idx[idx2Col[i]] = i
+  var col2Idx = getCol2Idx(table[0]);
   Logger.log("[INFO]: col2idx for formResponses is:\n%s", col2Idx)
 
   // find every columns in "Form Responses Sheet" which starts with "pilihan dosen"
@@ -89,18 +50,20 @@ function assignStudentsToSheets(spreadsheetAssignmentUrl) {
     (key) => {return key.toLowerCase().startsWith("pilihan dosen")}
   );
   if (chosenProfessorColNames.length > firstCell_StudentQueues) {
-    console.warn(`chosenProfessorColNames.length > firstCell_StudentQueues.length! (${chosenProfessorColNames.length} vs ${firstCell_StudentQueues.length})`);
+    console.warn(
+      `chosenProfessorColNames.length > firstCell_StudentQueues.length! (${chosenProfessorColNames.length} vs ${firstCell_StudentQueues.length})`
+    );
   }
   console.log("chosenProfessorColNames is:", chosenProfessorColNames)
   
-  let data = table.slice(1)
+  let data = table.slice(1);
   for(var row of data) {
     var valuesToAppend = [
       [
         row[col2Idx["NRP - Nama"]],
-        row[col2Idx["Pilihan Lingkup Penelitian 1"]],
-        row[col2Idx["Pilihan Lingkup Penelitian 2"]],
-        row[col2Idx["Pilihan Lingkup Penelitian 3"]],
+        row[col2Idx["KK 1"]],
+        row[col2Idx["KK 2"]],
+        row[col2Idx["KK 3"]],
         row[col2Idx["Perkiraan Judul Tugas Akhir"]]
       ]
     ];
@@ -135,8 +98,7 @@ function clearAllProfessorSheets(spreadsheetAssignmentUrl) {
   for(var professorSheet of professorSheets) {
     Logger.log("[INFO] Clearing sheet: '%s'", professorSheet.getName())
     
-    let loweredSheetName = professorSheet.getName().toLowerCase();
-    if (loweredSheetName == "template" || loweredSheetName.includes("form responses")) {
+    if (_isSheetNonData(professorSheet.getName())) {
       Logger.log("[INFO] Accessing non-data sheet: '%s'. Skipping..", professorSheet.getName())
       continue
     }
@@ -152,4 +114,9 @@ function clearAllProfessorSheets(spreadsheetAssignmentUrl) {
       professorSheet.getRange(rangeToClear).clear({contentsOnly: true});
     }
   }
+}
+
+function _isSheetNonData(sheetName) {
+  let loweredSheetName = sheetName.toLowerCase();
+  return loweredSheetName == "template" || loweredSheetName.includes("form responses");
 }

@@ -2,27 +2,23 @@
 // var spreadsheetSourceId = "1bhuvOg6tJOLQyvvyeXDEAUaGwG_dfgavuY6j0fWRjeg";
 // var spreadsheetTargetId = "1TIiC1p0vMptRFfcFISsTG6sJx-W_1Fo8cPD2FJTGv5s";
 
-function updateForm(formTargetUrl, spreadsheetDBUrl, nameDropdownId, topicDropdownIds, professorDropdownIds){
+function populateFormDropdowns(formTargetUrl, spreadsheetDBUrl, nameDropdownId, topicDropdownIds, professorDropdownId){
   var form = FormApp.openByUrl(formTargetUrl);
   var ssSource = SpreadsheetApp.openByUrl(spreadsheetDBUrl);
 
-  var studentData = ssSource.getSheetByName("Students");
-  updateDropdownName(form, nameDropdownId, studentData);
+  var studentSheet = ssSource.getSheetByName("Students");
+  _updateDropdownName(form, nameDropdownId, studentSheet);
 
   // var topicDropdownIds = ["2083436530", "25904452", "313624459"];
   var topicDropdownIds = topicDropdownIds.split(",");
-  var topicData = ssSource.getSheetByName("Topics");
-  for(var topicDropdownId of topicDropdownIds)
-    updateDropdownTopic(form, topicDropdownId, topicData);
+  var topicSheet = ssSource.getSheetByName("Topics");
+  _updateDropdownTopics(form, topicDropdownIds, topicSheet);
 
-  // var professorDropdownIds = ["1187134166", "103959848", "1540995051"];
-  var professorDropdownIds = professorDropdownIds.split(",");
   var professorSheet = ssSource.getSheetByName("Professors");
-  for(var professorDropdownId of professorDropdownIds)
-    updateDropdownProfessor(form, professorDropdownId, professorSheet);
+  _updateDropdownProfessor(form, professorDropdownId, professorSheet);
 }
 
-function updateDropdownName(form, nameDropdownId, studentData) {
+function _updateDropdownName(form, nameDropdownId, studentSheet) {
   try {
     var nameDropdown = form.getItemById(nameDropdownId).asListItem();
   } catch {
@@ -31,8 +27,8 @@ function updateDropdownName(form, nameDropdownId, studentData) {
   }
 
   // grab the values in the first column of the sheet - use 2 to skip header row
-  var nrpValues = studentData.getRange(2, 2, studentData.getMaxRows()).getValues();
-  var nameValues = studentData.getRange(2, 3, studentData.getMaxRows()).getValues();
+  var nrpValues = studentSheet.getRange(2, 2, studentSheet.getMaxRows()).getValues();
+  var nameValues = studentSheet.getRange(2, 3, studentSheet.getMaxRows()).getValues();
 
   var formItemStudent = [];
 
@@ -44,26 +40,27 @@ function updateDropdownName(form, nameDropdownId, studentData) {
 
 }
 
-function updateDropdownTopic(form, topicDropdownId, topicData) {
-  try {
-    var topicDropdown = form.getItemById(topicDropdownId).asListItem();
-  } catch {
-    console.warn("[WARNING] topicDropdown with ID: %s is not found. Skipping update..")
-    return
+function _updateDropdownTopics(form, topicDropdownIds, topicSheet) {
+  var topicValues = topicSheet.getRange(2, 2, topicSheet.getMaxRows()).getValues();
+  for(var topicDropdownId of topicDropdownIds) {
+    try {
+      var topicDropdown = form.getItemById(topicDropdownId).asListItem();
+    } catch {
+      console.warn("[WARNING] topicDropdown with ID: %s is not found. Skipping update..")
+      return
+    }
+
+    var formItemTopic = [];
+
+    for(var i = 0; i < topicValues.length; i ++)
+      if(topicValues[i][0] != "")
+        formItemTopic[i] = topicValues[i][0]
+    
+    topicDropdown.setChoiceValues(formItemTopic)
   }
-  
-  var topicValues = topicData.getRange(2, 2, topicData.getMaxRows()).getValues();
-
-  var formItemTopic = [];
-
-  for(var i = 0; i < topicValues.length; i ++)
-    if(topicValues[i][0] != "")
-      formItemTopic[i] = topicValues[i][0]
-  
-  topicDropdown.setChoiceValues(formItemTopic)
 }
 
-function updateDropdownProfessor(form, professorDropdownId, professorSheet) {
+function _updateDropdownProfessor(form, professorDropdownId, professorSheet) {
   try {
     var professorDropdown = form.getItemById(professorDropdownId).asListItem()
   } catch {
@@ -83,7 +80,7 @@ function updateDropdownProfessor(form, professorDropdownId, professorSheet) {
   professorDropdown.setChoiceValues(formItemProfessor);
 }
 
-function generateProfessorSheets(spreadsheetDBUrl, spreadsheetAssignmentUrl) {
+function prepareResponseSheet(spreadsheetDBUrl, spreadsheetAssignmentUrl) {
   var ssSource = SpreadsheetApp.openByUrl(spreadsheetDBUrl);
 
   var professorSheet = ssSource.getSheetByName("Professors");
@@ -93,6 +90,12 @@ function generateProfessorSheets(spreadsheetDBUrl, spreadsheetAssignmentUrl) {
 
 
   var ssTarget = SpreadsheetApp.openByUrl(spreadsheetAssignmentUrl);
+  if (ssTarget.getNumSheets() > 2) {
+    throw new AlreadyPreparedSpreadsheetException(
+      `Spreadsheet is already prepared! If you WANT TO RESET the spreadsheet, run operation "Delete All Professor Sheets" first.`,
+      {"spreadsheetAssignmentUrl": spreadsheetAssignmentUrl}
+    );
+  }
   _setMeAsOnlyEditorOfSpreadsheet(ssTarget);
 
   var templateSheet = ssTarget.getSheetByName("Template");
@@ -114,8 +117,8 @@ function generateProfessorSheets(spreadsheetDBUrl, spreadsheetAssignmentUrl) {
 
   // manage non-professor sheets and spreadsheets protection
   let formResponsesSheet = ssTarget.getSheetByName("Form Responses");
-  _setMeAsOnlyEditorOfProtectionRange(formResponsesSheet.protect());
-  _setMeAsOnlyEditorOfProtectionRange(templateSheet.protect());
+  _setMeAsOnlyEditorOfProtectionRange(formResponsesSheet.protect().setDescription('Admin Only'));
+  _setMeAsOnlyEditorOfProtectionRange(templateSheet.protect().setDescription('Admin Only'));
   ssTarget.addEditors(emailsToAddAsEditor); // required to let the delegated professors to edit
 }
 
@@ -129,15 +132,14 @@ function _setMeAsOnlyEditorOfSpreadsheet(spreadsheet) {
 
 function _protectAndDelegateSheet(professorSheet, professorEmail) {
   console.log(professorEmail);
-  let protection = professorSheet.protect();
+  let protection = professorSheet.protect().setDescription("Admin Only");
 
   // create protection range
   var delegatedRanges = [];
   for(var firstCell_ChosenStudentList of firstCell_ChosenStudentLists) {
     let topLeftCell = firstCell_ChosenStudentList.getNextNCols(-1);
-    console.log("topLeftCell:", topLeftCell);
-    let botRightCell = topLeftCell.getNextEmptyRow(professorSheet).getNextNCols(1).getNextNRows(-1);
-    console.log("botRightCell:", botRightCell);
+    let botRightCell = topLeftCell.getNextEmptyRow(professorSheet).getNextNCols(1).getNextNRows(-2);
+    console.log("topLeftCell, botRightCell: (%s, %s)", topLeftCell.getPos(), botRightCell.getPos());
     let range = professorSheet.getRange(topLeftCell.getNextNCols(1).getPos() + ":" + botRightCell.getPos());
     delegatedRanges.push(range);
   }
@@ -147,8 +149,9 @@ function _protectAndDelegateSheet(professorSheet, professorEmail) {
 
   // add professor as the editor of delegated ranges
   for(let delegatedRange of delegatedRanges) {
-    let delegatedProtection = delegatedRange.protect();
+    let delegatedProtection = delegatedRange.protect().setDescription(`${professorEmail} Only`);
     delegatedProtection.addEditor(professorEmail);
+    // delegatedProtection.addViewer(professorEmail);
   }
 }
 
@@ -161,9 +164,25 @@ function _setMeAsOnlyEditorOfProtectionRange(protection) {
   }
 }
 
+function escalateAllUsersAccess(spreadsheetAssignmentUrl) {
+  var ssTarget = SpreadsheetApp.openByUrl(spreadsheetAssignmentUrl);
+  for(let user of ssTarget.getViewers()) {
+    ssTarget.addEditor(user);
+  }
+}
+
+function deescalateAllUsersAccess(spreadsheetAssignmentUrl) {
+  var ssTarget = SpreadsheetApp.openByUrl(spreadsheetAssignmentUrl);
+  var me = Session.getEffectiveUser();
+  ssTarget.addEditor(me);
+  for(let user of ssTarget.getEditors()) {
+    ssTarget.removeEditor(user);
+    ssTarget.addViewer(user);
+  }
+}
+
 function deleteAllProfessorSheets(spreadsheetAssignmentUrl) {
   var ssTarget = SpreadsheetApp.openByUrl(spreadsheetAssignmentUrl);
-  _setMeAsOnlyEditorOfSpreadsheet(ssTarget);
 
   var professorSheets = ssTarget.getSheets().slice(2);
   for(var professorSheet of professorSheets) {
@@ -177,4 +196,5 @@ function deleteAllProfessorSheets(spreadsheetAssignmentUrl) {
 
     ssTarget.deleteSheet(professorSheet);
   }
+  _setMeAsOnlyEditorOfSpreadsheet(ssTarget);
 }
