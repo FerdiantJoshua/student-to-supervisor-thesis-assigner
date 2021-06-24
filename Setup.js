@@ -1,177 +1,275 @@
-// var formTarget = "1FBWSBfQhAif5CE105G13HPGwekNckZjzMh9eleLa28M";
-// var spreadsheetSourceId = "1bhuvOg6tJOLQyvvyeXDEAUaGwG_dfgavuY6j0fWRjeg";
-// var spreadsheetTargetId = "1TIiC1p0vMptRFfcFISsTG6sJx-W_1Fo8cPD2FJTGv5s";
+function populateFormDropdowns(formTargetUrl, spreadsheetDBUrl, supervisionLevel, nameDropdownId, topicDropdownIds, professorDropdownId){
+  let form = FormApp.openByUrl(formTargetUrl);
+  let ssSource = SpreadsheetApp.openByUrl(spreadsheetDBUrl);
 
-function populateFormDropdowns(formTargetUrl, spreadsheetDBUrl, nameDropdownId, topicDropdownIds, professorDropdownId){
-  var form = FormApp.openByUrl(formTargetUrl);
-  var ssSource = SpreadsheetApp.openByUrl(spreadsheetDBUrl);
+  let supervisionSheet = ssSource.getSheetByName(CONST.SHEET_NAMES.SUPERVISIONS);
+  let supervisionsGroupedByStudent = getSupervisionsOnLevel(supervisionSheet, supervisionLevel, groupByStudent=true);
+  let studentsToOmit = Object.keys(supervisionsGroupedByStudent);
 
-  var studentSheet = ssSource.getSheetByName("Students");
-  _updateDropdownName(form, nameDropdownId, studentSheet);
+  let supervisionLevelsSheet = ssSource.getSheetByName(CONST.SHEET_NAMES.SUPERVISION_LEVELS);
+  let maxStudents = getMaxStudentsBySupervisionLevel(supervisionLevelsSheet)[supervisionLevel];
+  let supervisionsGroupedByProfessor = getSupervisionsOnLevel(supervisionSheet, supervisionLevel, groupByStudent=false);
+  let professorsToOmit = Object.keys(supervisionsGroupedByProfessor)
+                               .filter(professorName => supervisionsGroupedByProfessor[professorName].length >= maxStudents);
 
-  // var topicDropdownIds = ["2083436530", "25904452", "313624459"];
+  var studentSheet = ssSource.getSheetByName(CONST.SHEET_NAMES.STUDENTS);
+  _updateDropdownName(form, nameDropdownId, studentSheet, studentsToOmit);
+
   var topicDropdownIds = topicDropdownIds.split(",");
-  var topicSheet = ssSource.getSheetByName("Topics");
+  var topicSheet = ssSource.getSheetByName(CONST.SHEET_NAMES.TOPICS);
   _updateDropdownTopics(form, topicDropdownIds, topicSheet);
 
-  var professorSheet = ssSource.getSheetByName("Professors");
-  _updateDropdownProfessor(form, professorDropdownId, professorSheet);
+  var professorSheet = ssSource.getSheetByName(CONST.SHEET_NAMES.PROFESSORS);
+  _updateDropdownProfessor(form, professorDropdownId, professorSheet, professorsToOmit);
 }
 
-function _updateDropdownName(form, nameDropdownId, studentSheet) {
+function _updateDropdownName(form, nameDropdownId, studentSheet, namesToOmit) {
   try {
     var nameDropdown = form.getItemById(nameDropdownId).asListItem();
   } catch {
-    console.warn("[WARNING] nameDropdown with ID: %s is not found. Skipping update..")
+    console.warn("[WARNING] nameDropdown with ID: %s is not found. Skipping update..", nameDropdownId)
     return
   }
 
-  // grab the values in the first column of the sheet - use 2 to skip header row
-  var nrpValues = studentSheet.getRange(2, 2, studentSheet.getMaxRows()).getValues();
-  var nameValues = studentSheet.getRange(2, 3, studentSheet.getMaxRows()).getValues();
+  let tableObject = getTableFromSheet(studentSheet, verboseTableName=CONST.SHEET_NAMES.STUDENTS);
+  let {data, col2Idx} = tableObject;
+  let {"Nama": nameIdx, "NRP": nrpIdx} = col2Idx;
 
-  var formItemStudent = [];
+  let namesToOmitSet = new Set(namesToOmit);
 
-  for(var i = 0; i < nrpValues.length; i++)   
-    if(nrpValues[i][0] != "")
-      formItemStudent[i] = nrpValues[i][0] + " - " + nameValues[i][0];
+  // Take all students which are not in "namesToOmit"
+  var formItemsStudent = [];
+  for(let i = 0; i < data.length; i++) {
+    let row = data[i];
+    if (row[nameIdx] != "" && !namesToOmitSet.delete(row[nameIdx])) {
+      formItemsStudent.push(`${row[nrpIdx]} - ${row[nameIdx]}`);
+    }
+  }
 
-  nameDropdown.setChoiceValues(formItemStudent);
-
+  if (formItemsStudent.length == 0) formItemsStudent = ["All students have already got their supervisors"];
+  nameDropdown.setChoiceValues(formItemsStudent);
 }
 
 function _updateDropdownTopics(form, topicDropdownIds, topicSheet) {
-  var topicValues = topicSheet.getRange(2, 2, topicSheet.getMaxRows()).getValues();
-  for(var topicDropdownId of topicDropdownIds) {
+  let tableObject = getTableFromSheet(topicSheet, verboseTableName=CONST.SHEET_NAMES.TOPICS);
+  let {data, col2Idx} = tableObject;
+
+  for(let topicDropdownId of topicDropdownIds) {
     try {
       var topicDropdown = form.getItemById(topicDropdownId).asListItem();
     } catch {
-      console.warn("[WARNING] topicDropdown with ID: %s is not found. Skipping update..")
+      console.warn("[WARNING] topicDropdown with ID: %s is not found. Skipping update..", topicDropdownId)
       return
     }
 
-    var formItemTopic = [];
-
-    for(var i = 0; i < topicValues.length; i ++)
-      if(topicValues[i][0] != "")
-        formItemTopic[i] = topicValues[i][0]
+    let nameIdx = col2Idx["Name"];
+    let formItemsTopic = [];
+    for(let row of data)
+      if(row[nameIdx] != "")
+        formItemsTopic.push(row[nameIdx]);
     
-    topicDropdown.setChoiceValues(formItemTopic)
+    topicDropdown.setChoiceValues(formItemsTopic)
   }
 }
 
-function _updateDropdownProfessor(form, professorDropdownId, professorSheet) {
+function _updateDropdownProfessor(form, professorDropdownId, professorSheet, namesToOmit) {
   try {
     var professorDropdown = form.getItemById(professorDropdownId).asListItem()
   } catch {
-    console.warn("[WARNING] professorDropdown with ID: %s is not found. Skipping update..")
+    console.warn("[WARNING] professorDropdown with ID: %s is not found. Skipping update..", professorDropdownId)
     return
   }
-  
-  var nameValues = professorSheet.getRange(2, 3, professorSheet.getMaxRows()).getValues();
-  var topicValues = professorSheet.getRange(2, 4, professorSheet.getMaxRows()).getValues();
 
-  var formItemProfessor = [];
+  let tableObject = getTableFromSheet(professorSheet, verboseTableName=CONST.SHEET_NAMES.PROFESSORS);
+  let {data, col2Idx} = tableObject;
+  let {"Nama": nameIdx, "Kelompok Keilmuan": topicIdx} = col2Idx;
 
-  for(var i = 0; i < nameValues.length; i ++)
-    if(nameValues[i][0] != "")
-      formItemProfessor[i] = nameValues[i][0] + " - " + topicValues[i][0];
+  let namesToOmitSet = new Set(namesToOmit);
+
+  // Take all professors which are not in "namesToOmit"
+  var formItemsProfessor = [];
+  for(let i = 0; i < data.length; i++) {
+    let row = data[i];
+    if (row[nameIdx] != "" && !namesToOmitSet.delete(row[nameIdx])) {
+      formItemsProfessor.push(`${row[nameIdx]} - ${row[topicIdx]}`);
+    }
+  }
   
-  professorDropdown.setChoiceValues(formItemProfessor);
+  if (formItemsProfessor.length == 0) formItemsProfessor = ["All professors have already reached maximum number of students"];
+  professorDropdown.setChoiceValues(formItemsProfessor);
 }
 
-function prepareResponseSheet(spreadsheetDBUrl, spreadsheetAssignmentUrl) {
+function generateProfessorSheets(spreadsheetDBUrl, spreadsheetAssignmentUrl) {
   var ssSource = SpreadsheetApp.openByUrl(spreadsheetDBUrl);
 
-  var professorSheet = ssSource.getSheetByName("Professors");
-  var nameValues = professorSheet.getRange(2, 3, professorSheet.getMaxRows()).getValues();
-  var topicValues = professorSheet.getRange(2, 4, professorSheet.getMaxRows()).getValues();
-  var emailValues = professorSheet.getRange(2, 5, professorSheet.getMaxRows()).getValues();
+  // Read professor table from sheet "Professors"
+  let professorSheet = ssSource.getSheetByName(CONST.SHEET_NAMES.PROFESSORS);
+  let tableObject = getTableFromSheet(professorSheet, verboseTableName=CONST.SHEET_NAMES.PROFESSORS);
+  let {data, col2Idx} = tableObject;
+  let {"Nama": nameIdx, "Kelompok Keilmuan": topicIdx} = col2Idx;
 
+  // Fetch "Supervision Level" table from sheet
+  let supervisionLevelsSheet = ssSource.getSheetByName(CONST.SHEET_NAMES.SUPERVISION_LEVELS);
+  let maxStudentsBySupervisionLevel = getMaxStudentsBySupervisionLevel(supervisionLevelsSheet);
+  // console.log("[DEBUG] supervisionsGroupedByProfessor:", supervisionsGroupedByProfessor);
+  // console.log("[DEBUG] maxStudentsBySupervisionLevel:", maxStudentsBySupervisionLevel);
 
   var ssTarget = SpreadsheetApp.openByUrl(spreadsheetAssignmentUrl);
+  var templateSheet = ssTarget.getSheetByName(CONST.SHEET_NAMES.TEMPLATE);
+
+  // Fetch "Chosen Students" table props info from "Template" sheet
+  var props_ChosenStudentsTables = getPropsOfChosenStudentsTables(templateSheet);
+  console.log("[DEBUG] props_ChosenStudentsTables:", props_ChosenStudentsTables);
+  
+  // TERMINATE IF the spreadsheets has been PREPARED
   if (ssTarget.getNumSheets() > 2) {
     throw new AlreadyPreparedSpreadsheetException(
       `Spreadsheet is already prepared! If you WANT TO RESET the spreadsheet, run operation "Delete All Professor Sheets" first.`,
-      {"spreadsheetAssignmentUrl": spreadsheetAssignmentUrl}
+      debug={"spreadsheetAssignmentUrl": spreadsheetAssignmentUrl}
     );
   }
-  _setMeAsOnlyEditorOfSpreadsheet(ssTarget);
 
-  var templateSheet = ssTarget.getSheetByName("Template");
-  var emailsToAddAsEditor = []
+  // TERMINATE IF "Chosen Students" tables sizes are not equal to maxStudents
+  for(let level of Object.keys(props_ChosenStudentsTables)) {
+    let tableSize = props_ChosenStudentsTables[level].size;
+    let maxStudents = maxStudentsBySupervisionLevel[level];
+    if (tableSize != maxStudents)
+      throw new ChosenStudentsTableSizeMismatch(
+        `'Chosen Students Table' on supervision level ${level} size mismatch the maxStudents (${tableSize} vs ${maxStudents})`
+      )
+  }
 
-  for(var i = 0; i < nameValues.length; i++){
-    if(nameValues[i][0] != ""){
-      Logger.log("[INFO]: Generating sheet for: '%s'", nameValues[i][0]);
-      let professorName = nameValues[i][0];
-      let topic = topicValues[i][0];
-      let email = emailValues[i][0];
-      emailsToAddAsEditor.push(email);
+  for(let row of data) {
+    let professorName = row[nameIdx];
+    if(professorName != ""){
+      Logger.log("[INFO] Generating sheet for: '%s'", professorName);
+      let topic = row[topicIdx];
       let newProfessorSheet = templateSheet.copyTo(ssTarget).setName(professorName);
-      newProfessorSheet.getRange("C1:C2").setValues([[professorName], [topic]]);
+      newProfessorSheet.getRange("D1:D2").setValues([[professorName], [topic]]);
+    }
+  }
+}
+
+function updateAssignmentSheetsProtection(spreadsheetDBUrl, spreadsheetAssignmentUrl, supervisionLevel) {
+  var ssSource = SpreadsheetApp.openByUrl(spreadsheetDBUrl);
+
+  // Read professor table from sheet "Professors"
+  let professorSheet = ssSource.getSheetByName(CONST.SHEET_NAMES.PROFESSORS);
+  let tableObject = getTableFromSheet(professorSheet, verboseTableName=CONST.SHEET_NAMES.PROFESSORS);
+  let {data, col2Idx} = tableObject;
+  let {"Nama": nameIdx, "Email": emailIdx} = col2Idx;
+
+  var ssTarget = SpreadsheetApp.openByUrl(spreadsheetAssignmentUrl);
+
+  // Fetch "Chosen Students" table props info from "Template" sheet
+  var templateSheet = ssTarget.getSheetByName(CONST.SHEET_NAMES.TEMPLATE);
+  var props_ChosenStudentsTables = getPropsOfChosenStudentsTables(templateSheet);
+  console.log("[DEBUG] props_ChosenStudentsTables:", props_ChosenStudentsTables);
+
+  // TERMINATE IF supervisionLevel IS NOT A MEMBER OF props_ChosenStudentsTables
+  if (props_ChosenStudentsTables[supervisionLevel] == null) {
+    throw new ChosenStudentsTableDoesNotExist(
+      `'Chosen Students Table' on supervision level ${supervisionLevel} does not not exist!`,
+      debug={"props_ChosenStudentsTables": props_ChosenStudentsTables}
+    )
+  }
+
+  let me = Session.getEffectiveUser();
+  // NOTE: this line must be executed before "_updateSheetProtection" to prevent existing editors to have access to the protected sheet
+  _setUserAsOnlyEditorOfSpreadsheet(me, ssTarget);
+
+  var emailsToAddAsEditor = []
+  for(let row of data) {
+    let professorName = row[nameIdx];
+    if(professorName != "") {
+      let professorSheet = ssTarget.getSheetByName(professorName);
+      if (professorSheet == null) {
+        console.warn(`[WARN]: Professor sheet with name "${professorName} is not found! Skipping protection update.."`)
+        continue;
+      }
+      let email = row[emailIdx];
+      emailsToAddAsEditor.push(email);
       
-      _protectAndDelegateSheet(newProfessorSheet, email);
+      _updateSheetProtection(professorSheet, me, email, props_ChosenStudentsTables, supervisionLevel);
     }
   }
 
-  // manage non-professor sheets and spreadsheets protection
+  // manage non-professor sheets and spreadsheet protection
   let formResponsesSheet = ssTarget.getSheetByName("Form Responses");
-  _setMeAsOnlyEditorOfProtectionRange(formResponsesSheet.protect().setDescription('Admin Only'));
-  _setMeAsOnlyEditorOfProtectionRange(templateSheet.protect().setDescription('Admin Only'));
+  _setUserAsOnlyEditorOfProtection(me, formResponsesSheet.protect().setDescription('Admin Only'));
+  _setUserAsOnlyEditorOfProtection(me, templateSheet.protect().setDescription('Admin Only'));
   ssTarget.addEditors(emailsToAddAsEditor); // required to let the delegated professors to edit
 }
 
-function _setMeAsOnlyEditorOfSpreadsheet(spreadsheet) {
-  var me = Session.getEffectiveUser();
-  spreadsheet.addEditor(me);
+function _updateSheetProtection(professorSheet, currentUser, professorEmail, props_ChosenStudentsTables, supervisionLevel) {
+  let professorName = professorSheet.getName();
+  let previousSheetProtection = professorSheet.getProtections(SpreadsheetApp.ProtectionType.SHEET);
+  let previousProtections = professorSheet.getProtections(SpreadsheetApp.ProtectionType.RANGE);
+
+  if (previousSheetProtection.length == 0 || previousProtections.length == 0) {
+    Logger.info(`[INFO] Initializing new protections for "${professorName}" to "${professorEmail}"`);
+    if (previousSheetProtection.length != 0) {
+      previousSheetProtection[0].remove();
+    } else if (previousProtections.length != 0) {
+      console.warn(`[WARNING] Sheet "${professorName}" has already had ${previousProtections.length} protection ranges!`)
+    }
+    let sheetProtection = professorSheet.protect().setDescription("Admin Only").addEditor(currentUser);
+
+    var delegatedRanges = {"ranges": [], "enabled": []};
+    for(let level of Object.keys(props_ChosenStudentsTables)) {
+      let props_ChosenStudentsTable = props_ChosenStudentsTables[level];
+      let rangeToDelegate = professorSheet.getRange(
+        props_ChosenStudentsTable.firstRow, CONST.TEMPLATE_FIRST_DATA_COLUMN,
+        props_ChosenStudentsTable.size, 1
+      );
+      let enabled = level == supervisionLevel;
+      delegatedRanges.ranges.push(rangeToDelegate);
+      delegatedRanges.enabled.push(enabled);
+    }
+
+    sheetProtection.setUnprotectedRanges(delegatedRanges.ranges);
+    for(let i = 0; i < delegatedRanges.ranges.length; i++) {
+      let delegatedRange = delegatedRanges.ranges[i];
+      let enabled = delegatedRanges.enabled[i];
+      let protection = delegatedRange.protect().addEditor(currentUser);
+      if (enabled) {
+        protection.setDescription(`${professorEmail} Only`).addEditor(professorEmail);
+      } else {
+        protection.setDescription(`(Disabled) ${professorEmail} Only`);
+      }
+    }
+
+  } else {
+    Logger.info(`[INFO] Updating existing protections for "${professorName}" to "${professorEmail}"`);
+    let currentChosenStudentTable = props_ChosenStudentsTables[supervisionLevel];
+    for(let protection of previousProtections) {
+      let protectionFirstCell = protection.getRange().getCell(1, 1);
+      if (protectionFirstCell.getColumn() == CONST.TEMPLATE_FIRST_DATA_COLUMN
+          && currentChosenStudentTable.firstRow == protectionFirstCell.getRow()) {
+        protection.setDescription(`${professorEmail} Only`).addEditor(professorEmail)
+      } else {
+        protection.setDescription(`(Disabled) ${professorEmail} Only`).removeEditor(professorEmail)
+      }
+    }
+  }
+}
+
+function _setUserAsOnlyEditorOfSpreadsheet(user, spreadsheet) {
+  spreadsheet.addEditor(user);
   for(let user of spreadsheet.getEditors()) {
     spreadsheet.removeEditor(user);
   }
 }
 
-function _protectAndDelegateSheet(professorSheet, professorEmail) {
-  console.log(professorEmail);
-  let protection = professorSheet.protect().setDescription("Admin Only");
-
-  // create protection range
-  var delegatedRanges = [];
-  for(var firstCell_ChosenStudentList of firstCell_ChosenStudentLists) {
-    let topLeftCell = firstCell_ChosenStudentList.getNextNCols(-1);
-    let botRightCell = topLeftCell.getNextEmptyRow(professorSheet).getNextNCols(1).getNextNRows(-2);
-    console.log("topLeftCell, botRightCell: (%s, %s)", topLeftCell.getPos(), botRightCell.getPos());
-    let range = professorSheet.getRange(topLeftCell.getNextNCols(1).getPos() + ":" + botRightCell.getPos());
-    delegatedRanges.push(range);
-  }
-  protection.setUnprotectedRanges(delegatedRanges);
-
-  _setMeAsOnlyEditorOfProtectionRange(protection);
-
-  // add professor as the editor of delegated ranges
-  for(let delegatedRange of delegatedRanges) {
-    let delegatedProtection = delegatedRange.protect().setDescription(`${professorEmail} Only`);
-    delegatedProtection.addEditor(professorEmail);
-    // delegatedProtection.addViewer(professorEmail);
-  }
-}
-
-function _setMeAsOnlyEditorOfProtectionRange(protection) {
-  var me = Session.getEffectiveUser();
-  protection.addEditor(me);
+function _setUserAsOnlyEditorOfProtection(user, protection) {
+  protection.addEditor(user);
   protection.removeEditors(protection.getEditors());
   if (protection.canDomainEdit()) {
     protection.setDomainEdit(false);
   }
 }
 
-function escalateAllUsersAccess(spreadsheetAssignmentUrl) {
-  var ssTarget = SpreadsheetApp.openByUrl(spreadsheetAssignmentUrl);
-  for(let user of ssTarget.getViewers()) {
-    ssTarget.addEditor(user);
-  }
-}
-
-function deescalateAllUsersAccess(spreadsheetAssignmentUrl) {
+function changeAllEditorsToViewers(spreadsheetAssignmentUrl) {
   var ssTarget = SpreadsheetApp.openByUrl(spreadsheetAssignmentUrl);
   var me = Session.getEffectiveUser();
   ssTarget.addEditor(me);
@@ -181,20 +279,39 @@ function deescalateAllUsersAccess(spreadsheetAssignmentUrl) {
   }
 }
 
+function changeAllViewersToEditors(spreadsheetAssignmentUrl) {
+  var ssTarget = SpreadsheetApp.openByUrl(spreadsheetAssignmentUrl);
+  for(let user of ssTarget.getViewers()) {
+    ssTarget.addEditor(user);
+  }
+}
+
+function removeAllEditorsAndProtections(spreadsheetAssignmentUrl) {
+  let ssTarget = SpreadsheetApp.openByUrl(spreadsheetAssignmentUrl);
+  ssTarget.getEditors()
+          .forEach(user => ssTarget.removeEditor(user));
+
+  let sheets = ssTarget.getSheets();
+  for(let sheet of sheets) {
+    sheet.getProtections(SpreadsheetApp.ProtectionType.SHEET)[0].remove();
+    sheet.getProtections(SpreadsheetApp.ProtectionType.RANGE)
+         .forEach(range => range.remove());
+  }
+}
+
 function deleteAllProfessorSheets(spreadsheetAssignmentUrl) {
   var ssTarget = SpreadsheetApp.openByUrl(spreadsheetAssignmentUrl);
 
-  var professorSheets = ssTarget.getSheets().slice(2);
+  var professorSheets = ssTarget.getSheets();
   for(var professorSheet of professorSheets) {
-    Logger.log("[INFO]: Deleting sheet: '%s'", professorSheet.getName())
-    
-    let loweredSheetName = professorSheet.getName().toLowerCase();
-    if (loweredSheetName == "template" || loweredSheetName.includes("form responses")) {
-      Logger.log("[INFO]: Accessing non-data sheet: '%s'. Skipping..", professorSheet.getName())
+    if (isSheetNonData(professorSheet.getName())) {
+      Logger.log("[INFO] Accessing non-data sheet: '%s'. Skipping..", professorSheet.getName())
       continue
     }
+    Logger.log("[INFO] Deleting sheet: '%s'", professorSheet.getName())
 
     ssTarget.deleteSheet(professorSheet);
   }
-  _setMeAsOnlyEditorOfSpreadsheet(ssTarget);
+  let me = Session.getEffectiveUser();
+  _setUserAsOnlyEditorOfSpreadsheet(me, ssTarget);
 }

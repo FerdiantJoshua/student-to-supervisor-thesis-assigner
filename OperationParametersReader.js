@@ -1,13 +1,12 @@
 function getOperationParametersOnBatch(spreadsheetDBUrl, batchName) {
-  var operationParametersTable = _getOperationParametersTable(spreadsheetDBUrl);
+  let ssSource = SpreadsheetApp.openByUrl(spreadsheetDBUrl);
 
-  var idx2Col = operationParametersTable[0];
-  var col2Idx = {}
-  for(let i = 0; i < idx2Col.length; i++)
-    col2Idx[idx2Col[i]] = i
-  Logger.log("[INFO]: col2idx for operationParameters is:\n%s", col2Idx)
+  let operationParametersSheet = ssSource.getSheetByName(CONST.SHEET_NAMES.OPERATION_PARAMETERS);
+  let tableObject = getTableFromSheet(operationParametersSheet, "operationParameters");
+  let data = tableObject["data"];
+  var col2Idx = tableObject["col2Idx"];
 
-  var operationParameters = operationParametersTable.filter((row) => {
+  var operationParameters = data.filter((row) => {
     return row[col2Idx["BatchName"]] == batchName;
   });
 
@@ -20,13 +19,4 @@ function getOperationParametersOnBatch(spreadsheetDBUrl, batchName) {
   } else {
     throw new BatchNotFoundException(`Batch with name "${batchName}" is not found!`);
   }
-}
-
-function _getOperationParametersTable(spreadsheetDBUrl) {
-  let ssSource = SpreadsheetApp.openByUrl(spreadsheetDBUrl);
-
-  let operationParametersSheet = ssSource.getSheetByName("OperationParameters");
-  let operationParametersTable = operationParametersSheet.getDataRange().getValues();
-
-  return operationParametersTable;
 }

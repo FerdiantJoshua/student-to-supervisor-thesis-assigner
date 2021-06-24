@@ -23,29 +23,50 @@ function doPost(e) {
         populateFormDropdowns(
           operationParams["Form URL"],
           params.spreadsheet_database_url,
+          operationParams["Supervision Level"],
           operationParams["Form Name Dropdown Id"],
           operationParams["Form Topic Dropdown Ids"],
           operationParams["Form Professor Dropdown Id"]
         );
         break;
-      case "prepareResponseSheet":
-        prepareResponseSheet(params.spreadsheet_database_url, operationParams["Spreadsheet Form Responses URL"]);
+      case "generateProfessorSheets":
+        generateProfessorSheets(
+          params.spreadsheet_database_url,
+          operationParams["Spreadsheet Assignment URL"],
+        );
         break;
-      case "deescalateAllUsersAccess":
-        deescalateAllUsersAccess(operationParams["Spreadsheet Form Responses URL"]);
+      case "updateAssignmentSheetsProtection":
+        updateAssignmentSheetsProtection(
+          params.spreadsheet_database_url,
+          operationParams["Spreadsheet Assignment URL"],
+          operationParams["Supervision Level"],
+        );
         break;
-      case "escalateAllUsersAccess":
-        escalateAllUsersAccess(operationParams["Spreadsheet Form Responses URL"]);
+      case "changeAllEditorsToViewers":
+        changeAllEditorsToViewers(operationParams["Spreadsheet Assignment URL"]);
+        break;
+      case "changeAllViewersToEditors":
+        changeAllViewersToEditors(operationParams["Spreadsheet Assignment URL"]);
+        break;
+      case "removeAllEditorsAndProtections":
+        removeAllEditorsAndProtections(operationParams["Spreadsheet Assignment URL"]);
         break;
       case "deleteAllProfessorSheets":
-        deleteAllProfessorSheets(operationParams["Spreadsheet Form Responses URL"]);
+        deleteAllProfessorSheets(operationParams["Spreadsheet Assignment URL"]);
         break;
       // ResponseManagement
       case "assignStudentsToSheets":
-        assignStudentsToSheets(operationParams["Spreadsheet Form Responses URL"]);
+        assignStudentsToSheets(operationParams["Spreadsheet Assignment URL"]);
         break;
       case "clearAllProfessorSheets":
-        clearAllProfessorSheets(operationParams["Spreadsheet Form Responses URL"]);
+        clearAllProfessorSheets(operationParams["Spreadsheet Assignment URL"]);
+        break;
+      // SupervisionRelationsManagement
+      case "saveStudentProfessorRelations":
+        saveStudentProfessorRelations(
+          params.spreadsheet_database_url,
+          operationParams["Spreadsheet Assignment URL"]
+        );
         break;
       default:
         throw new UnknownOperationException(`Unknown operation_type "${params.operation_type}"`);
@@ -107,10 +128,24 @@ function StudentsAlreadyAssignedException(message, debug=null) {
   this.debug = debug;
 }
 
+function ChosenStudentsTableSizeMismatch(message, debug=null) {
+  this.message = message;
+  this.name = 'ChosenStudentsTableSizeMismatch';
+  this.debug = debug;
+}
+
+function ChosenStudentsTableDoesNotExist(message, debug=null) {
+  this.message = message;
+  this.name = 'ChosenStudentsTableDoesNotExist';
+  this.debug = debug;
+}
+
 function _isExceptionCustom(err) {
   return err instanceof UnknownOperationException ||
     err instanceof BatchNotFoundException ||
     err instanceof AlreadyPreparedSpreadsheetException ||
     err instanceof UnpreparedSpreadsheetException ||
-    err instanceof StudentsAlreadyAssignedException
+    err instanceof StudentsAlreadyAssignedException ||
+    err instanceof ChosenStudentsTableSizeMismatch ||
+    err instanceof ChosenStudentsTableDoesNotExist
 }

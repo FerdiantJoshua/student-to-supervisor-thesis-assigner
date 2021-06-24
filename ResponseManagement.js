@@ -1,122 +1,119 @@
-const firstCell_StudentQueues = [
-  new Cell("C", 25),
-  // new Cell("B", 30),
-  // new Cell("I", 30),
-  // new Cell("P", 30)
-]
-
-const firstCell_ChosenStudentLists = [
-  new Cell("C", 13),
-  // new Cell("B", 14),
-  // new Cell("B", 21)
-]
-
 function assignStudentsToSheets(spreadsheetAssignmentUrl) {
   var ssTarget = SpreadsheetApp.openByUrl(spreadsheetAssignmentUrl);
+
+  // Fetch 'Student Queue Table' info from 'Template' sheet
+  let templateSheet = ssTarget.getSheetByName(CONST.SHEET_NAMES.TEMPLATE);
+  var props_StudentQueueTable = getPropsOfStudentQueueTable(templateSheet);
+  console.log("[DEBUG] props_StudentQueueTable:", props_StudentQueueTable);
 
   // TERMINATE IF the spreadsheets has NOT been PREPARED
   if (ssTarget.getNumSheets() <= 2) {
     throw new UnpreparedSpreadsheetException(
       `Spreadsheet has not been prepared yet! Please run operation "Prepare Response Sheets" first.`,
-      {"spreadsheetAssignmentUrl": spreadsheetAssignmentUrl}
+      debug={"spreadsheetAssignmentUrl": spreadsheetAssignmentUrl}
     );
   }
 
   // TERMINATE IF any of professor sheet's student queues IS NOT EMPTY
   var professorSheets = ssTarget.getSheets();
   for(let professorSheet of professorSheets) {
-    if (_isSheetNonData(professorSheet.getName())) {
+    if (isSheetNonData(professorSheet.getName())) {
       continue;
     }
-    for(var firstCell_StudentQueue of firstCell_StudentQueues) {
-      let firstCellValue = professorSheet.getRange(firstCell_StudentQueue.getPos()).getValues();
-      if (firstCellValue[0][0] != "") {
-        throw new StudentsAlreadyAssignedException(
-          `Students in spreadsheet are already assigned! If you WANT TO REASSIGN students, run operation "Clear All Professor Sheets" first.`,
-          {"spreadsheetAssignmentUrl": spreadsheetAssignmentUrl}
-        );
-      }
+    let firstCellValue = professorSheet.getRange(props_StudentQueueTable.firstRow, CONST.TEMPLATE_FIRST_DATA_COLUMN, 1).getValues();
+    if (firstCellValue[0][0] != "") {
+      throw new StudentsAlreadyAssignedException(
+        `Students in spreadsheet are already assigned! If you WANT TO REASSIGN students, run operation "Clear All Professor Sheets" first.`,
+        debug={"spreadsheetAssignmentUrl": spreadsheetAssignmentUrl}
+      );
     }
   }
 
-  let formResponsesSheet = ssTarget.getSheetByName("Form Responses");
-  let table = formResponsesSheet.getDataRange().getValues();
+  // Read data from sheet 'Form Responses'
+  let formResponsesSheet = ssTarget.getSheetByName(CONST.SHEET_NAMES.FORM_RESPONSES);
+  let tableObject = getTableFromSheet(formResponsesSheet, "formResponses");
+  let data = tableObject["data"];
+  var col2Idx = tableObject["col2Idx"];
 
-  var col2Idx = getCol2Idx(table[0]);
-  Logger.log("[INFO]: col2idx for formResponses is:\n%s", col2Idx)
-
-  // find every columns in "Form Responses Sheet" which starts with "pilihan dosen"
-  var chosenProfessorColNames = Object.keys(col2Idx).filter(
-    (key) => {return key.toLowerCase().startsWith("pilihan dosen")}
-  );
-  if (chosenProfessorColNames.length > firstCell_StudentQueues) {
-    console.warn(
-      `chosenProfessorColNames.length > firstCell_StudentQueues.length! (${chosenProfessorColNames.length} vs ${firstCell_StudentQueues.length})`
-    );
+  let emailIdx = col2Idx["Email Address"];
+  let nrpNameIdx = col2Idx["NRP - Nama"];
+  let i = 0
+  while (i < data.length) {
+    let row = data[i];
+    let nrpFromEmail = row[emailIdx].split('@', 1)[0];
+    let nrpFromName = row[nrpNameIdx].split(' - ', 1)[0];
+    if ( nrpFromEmail != nrpFromName) {
+      console.warn(
+        "[WARNING] Student with name '%s' is omitted due to NRP mismatch '%s'. ('%s' vs '%s')",
+        row[nrpNameIdx], row[emailIdx], nrpFromName, nrpFromEmail
+      )
+      data.splice(i, 1);
+    } else {
+      i += 1;
+    }
   }
-  console.log("chosenProfessorColNames is:", chosenProfessorColNames)
   
-  let data = table.slice(1);
-  for(var row of data) {
-    var valuesToAppend = [
-      [
-        row[col2Idx["NRP - Nama"]],
-        row[col2Idx["KK 1"]],
-        row[col2Idx["KK 2"]],
-        row[col2Idx["KK 3"]],
-        row[col2Idx["Perkiraan Judul Tugas Akhir"]]
-      ]
-    ];
-    // chosenProfessors = [row[col2Idx["Pilihan Dosen 1"]], row[col2Idx["Pilihan Dosen 2"]], row[col2Idx["Pilihan Dosen 3"]]]
-
-    for(var i in chosenProfessorColNames) {
-      chosenProfessor = row[col2Idx[chosenProfessorColNames[i]]];
-      professorName = chosenProfessor.split(" - ")[0]
-      professorSheet = ssTarget.getSheetByName(professorName)
-      if (professorSheet == null) {
-        console.warn(
-          "[WARNING]: Sheet for professor name '%s' is not found (on student '%s'). Skipping append..", professorName, valuesToAppend[0][0]
-        )
-        continue;
-      }
-      let nextEmptyRowInColumn = firstCell_StudentQueues[i].getNextEmptyRow(professorSheet)
-
-      let rangeToInsert = nextEmptyRowInColumn.getRangeNextNCols(valuesToAppend[0].length - 1)
-      professorSheet.getRange(rangeToInsert).setValues(valuesToAppend)
-      Logger.log("[INFO]: Successfully append '%s' to Sheet '%s!%s'", valuesToAppend, professorName, rangeToInsert)
+  // Assign students to professors
+  let responsesGroupedByProfessor = groupByColumn(data, col2Idx[CONST.COL_NAMES.PILIHAN_DOSEN]);
+  for(let [professorName, studentResponseList] of Object.entries(responsesGroupedByProfessor)) {
+    professorName = professorName.split(" - ")[0]
+    professorSheet = ssTarget.getSheetByName(professorName)
+    if (professorSheet == null) {
+      console.warn(
+        "[WARNING]: Sheet for professor name '%s' is not found (chosen by students '%s'). Skipping append..", professorName, studentResponseList
+      )
+      continue;
     }
+
+    let nDataToInsert = Math.min(studentResponseList.length, props_StudentQueueTable.size);
+    console.log("[DEBUG] nDataToInsert:", nDataToInsert);
+
+    let rangeToInsert = professorSheet.getRange(
+      props_StudentQueueTable.firstRow, CONST.TEMPLATE_FIRST_DATA_COLUMN,
+      nDataToInsert, props_StudentQueueTable.header.length
+    )
+    
+    let valuesToInsert = []
+    for(let i in studentResponseList) {
+      if (i >= nDataToInsert) {
+        break;
+      }
+      studentResponse = studentResponseList[i];
+      valuesToInsert.push(
+        props_StudentQueueTable.header.map((columnName) => {
+          return studentResponse[col2Idx[columnName]]
+        }
+      ))
+    }
+    
+    professorSheet.getRange(rangeToInsert.getA1Notation()).setValues(valuesToInsert)
+    Logger.log("[INFO]: Successfully inserted '%s' to Sheet '%s!%s'", valuesToInsert, professorName, rangeToInsert)
   }
 }
 
 function clearAllProfessorSheets(spreadsheetAssignmentUrl) {
   var ssTarget = SpreadsheetApp.openByUrl(spreadsheetAssignmentUrl);
 
-  var professorSheets = ssTarget.getSheets();
-  if (professorSheets.length == 0)
-    Logger.log("[INFO] No professor sheets to clear");
+  // Fetch 'Student Queue Table' info from 'Template' sheet
+  let templateSheet = ssTarget.getSheetByName(CONST.SHEET_NAMES.TEMPLATE);
+  var props_StudentQueueTable = getPropsOfStudentQueueTable(templateSheet);
+  console.log("[DEBUG] props_StudentQueueTable:", props_StudentQueueTable);
 
+  // Clear professor sheets
+  var professorSheets = ssTarget.getSheets();
+  if (professorSheets.length == 0) Logger.log("[INFO] No professor sheets to clear");
   for(var professorSheet of professorSheets) {
-    Logger.log("[INFO] Clearing sheet: '%s'", professorSheet.getName())
-    
-    if (_isSheetNonData(professorSheet.getName())) {
-      Logger.log("[INFO] Accessing non-data sheet: '%s'. Skipping..", professorSheet.getName())
+    professorSheetName = professorSheet.getName();
+    if (isSheetNonData(professorSheetName)) {
+      Logger.log("[INFO] Accessing non-data sheet: '%s'. Skipping..", professorSheetName);
       continue
     }
+    Logger.log("[INFO] Clearing sheet: '%s'", professorSheetName);
 
-    for(var firstCell_StudentQueue of firstCell_StudentQueues) {
-      let botRightCell_StudentQueue = firstCell_StudentQueue.getNextEmptyCol(professorSheet);
-      botRightCell_StudentQueue.row = professorSheet.getMaxRows();
-      let rangeToClear = firstCell_StudentQueue.getPos() + ":" + botRightCell_StudentQueue.getPos();
-      professorSheet.getRange(rangeToClear).clear({contentsOnly: true});
-    }
-    for(var firstCell_ChosenStudentList of firstCell_ChosenStudentLists) {
-      let rangeToClear = firstCell_ChosenStudentList.getPos() + ":" + firstCell_ChosenStudentList.getNextEmptyRow(professorSheet).getPos();
-      professorSheet.getRange(rangeToClear).clear({contentsOnly: true});
-    }
+    let rangeToClear = professorSheet.getRange(
+      props_StudentQueueTable.firstRow, CONST.TEMPLATE_FIRST_DATA_COLUMN,
+      props_StudentQueueTable.size, props_StudentQueueTable.header.length
+    )
+    professorSheet.getRange(rangeToClear.getA1Notation()).clearContent();
   }
-}
-
-function _isSheetNonData(sheetName) {
-  let loweredSheetName = sheetName.toLowerCase();
-  return loweredSheetName == "template" || loweredSheetName.includes("form responses");
 }

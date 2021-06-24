@@ -13,10 +13,11 @@
       let selectedOptTypeText = $('#id_operation_type option:selected').text();
       let loweredSelectedOptionText = selectedOptTypeText.toLowerCase();
       let additionalMessage = ""
-      if (loweredSelectedOptionText.includes('delete') || loweredSelectedOptionText.includes ('clear')) {
-        additionalMessage = "</br>Your data will be DELETED or CLEARED.</br><b>You cannot undo this action</b>."
+      if (loweredSelectedOptionText.includes('delete')) {
+        additionalMessage = "</br>The data you request will be DELETED PERMANENTLY.</br><b>You cannot undo this action</b>."
       }
-      let modalBody = 'Are you sure to execute <b>"{0}"</b>?{1}'.format(selectedOptTypeText, additionalMessage)
+      let batchName = $('#id_batch_name').val()
+      let modalBody = 'Are you sure to execute <b>"{0}"</b> on <b>"{1}"</b>?{2}'.format(selectedOptTypeText, batchName, additionalMessage)
       $('#id_confirmation_modal_body').html(modalBody)
     })
 

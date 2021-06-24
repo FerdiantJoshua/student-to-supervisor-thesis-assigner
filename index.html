@@ -23,20 +23,20 @@
   <body>
     <nav class="navbar navbar-expand-md navbar-light bg-light fixed-top">
       <a class="navbar-brand" href="<?= serviceUrl ?>"><i class="fas fa-home mr-1"></i>Student-to-Supervisor Thesis Assignment</a>
-      <!-- <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
       </button>
 
       <div class="collapse navbar-collapse" id="navbarSupportedContent">
         <ul class="mr-auto navbar-nav">
-          <li><a class="nav-link" href=""><i class="fas fa-tools mr-1"></i>Admin</a></li>
-          <li><a class="nav-link" href=""><i class="far fa-clipboard mr-1"></i>Transaction</a></li>
+          <!-- <li><a class="nav-link" href=""><i class="fas fa-tools mr-1"></i>Admin</a></li>
+          <li><a class="nav-link" href=""><i class="far fa-clipboard mr-1"></i>Transaction</a></li> -->
         </ul>
         <ul class="navbar-nav">
-          <li><a class="nav-link" href=""><i class="fas fa-tachometer-alt"></i> Management</a></li>
-          <li><a class="nav-link" href="#"><i class="fas fa-user"></i> {{ user.first_name }} {{ user.last_name }} </a></li>
+          <li><a class="nav-link" href="#"><i class="fas fa-user"></i>Manual Book</a></li>
+          <li><a class="nav-link" href="https://github.com/FerdiantJoshua/student-to-supervisor-thesis-assignment"><i class="fas fa-tachometer-alt"></i> Source Code</a></li>
         </ul>
-      </div> -->
+      </div>
     </nav>
     <main class="container mt-5 pt-3">
 
@@ -63,10 +63,13 @@
           <div class="form-row mb-4">
               <select name="operation_type" placeholder="Operation Type" class=" form-control" id="id_operation_type">
                   <option value="populateFormDropdowns" selected="">Prepare Form Dropdowns</option>
-                  <option value="prepareResponseSheet">Prepare Response Sheets</option>
+                  <option value="generateProfessorSheets">Generate Professor Sheets</option>
+                  <option value="updateAssignmentSheetsProtection">Protect Assignment Sheets</option>
                   <option value="assignStudentsToSheets">Assign Students from Form Response to Professor Sheets</option>
-                  <option value="escalateAllUsersAccess">Escalate All Users Access</option>
-                  <option value="deescalateAllUsersAccess">Deescalate All Users Access</option>
+                  <option value="saveStudentProfessorRelations">Save Student Professor Relations</option>
+                  <option value="changeAllEditorsToViewers">Change All Editors to Viewers</option>
+                  <option value="changeAllViewersToEditors">Change All Viewers to Editors</option>
+                  <option value="removeAllEditorsAndProtections">Remove All Editors And Protections from Assignment Sheets</option>
                   <option value="clearAllProfessorSheets">Clear All Professor Sheets</option>
                   <option value="deleteAllProfessorSheets">Delete All Professor Sheets</option>
                 </select>
