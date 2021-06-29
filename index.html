@@ -61,24 +61,29 @@
         <form action="<?= serviceUrl ?>" method="post" enctype="multipart/form-data">
           <h4>Operation</h4>
           <div class="form-row mb-4">
-              <select name="operation_type" placeholder="Operation Type" class=" form-control" id="id_operation_type">
-                  <option value="populateFormDropdowns" selected="">Prepare Form Dropdowns</option>
-                  <option value="generateProfessorSheets">Generate Professor Sheets</option>
+              <select name="operation_type" placeholder="Operation Type" class="form-control mb-1" id="id_operation_type" required>
+                  <option value="">=== Choose An Operation ===</option>
+                  <option value="populateFormDropdowns">Prepare Form Dropdowns</option>
                   <option value="updateAssignmentSheetsProtection">Protect Assignment Sheets</option>
                   <option value="assignStudentsToSheets">Assign Students from Form Response to Professor Sheets</option>
+                  <option value="changeAllViewersToEditors">Allow All Professors to Edit</option>
+                  <option value="changeAllEditorsToViewers">Disallow All Professors to Edit</option>
                   <option value="saveStudentProfessorRelations">Save Student Professor Relations</option>
-                  <option value="changeAllEditorsToViewers">Change All Editors to Viewers</option>
-                  <option value="changeAllViewersToEditors">Change All Viewers to Editors</option>
-                  <option value="removeAllEditorsAndProtections">Remove All Editors And Protections from Assignment Sheets</option>
-                  <option value="clearAllProfessorSheets">Clear All Professor Sheets</option>
-                  <option value="deleteAllProfessorSheets">Delete All Professor Sheets</option>
+                  <option value="clearAllStudentQueues">Clear All Student Queues</option>
+                  <option value="removeAllEditorsAndProtections" class="font-italic switchable d-none">Remove All Editors And Protections from Assignment Sheets</option>
+                  <option value="generateProfessorSheets" class="font-italic switchable d-none">Generate Professor Sheets</option>
+                  <option value="deleteAllProfessorSheets" class="font-italic font-weight-bold switchable d-none">Delete All Professor Sheets (DANGEROUS)</option>
                 </select>
+              <div class="custom-control custom-switch">
+                <input type="checkbox" class="custom-control-input" id="switchSpecialOperations">
+                <label class="custom-control-label" for="switchSpecialOperations">Show Special Operations</label>
+              </div>
           </div>
           <h4>Spreadsheets</h4>
           <div class="form-row mb-4">
               <div class="form-group col-12">
                   <label class="form-control-label" for="id_spreadsheet_database_url">Database Spreadsheet URL</label>
-                  <input type="text" name="spreadsheet_database_url" value="https://docs.google.com/spreadsheets/d/1bhuvOg6tJOLQyvvyeXDEAUaGwG_dfgavuY6j0fWRjeg/edit" placeholder="Example: https://docs.google.com/spreadsheets/d/1bhuvOg6tJOLQyvvyeXDEAUaGwG_dfgavuY6j0fWRjeg/edit" class=" form-control" required="" id="id_spreadsheet_database_url">
+                  <input type="text" name="spreadsheet_database_url" value="https://docs.google.com/spreadsheets/d/1bhuvOg6tJOLQyvvyeXDEAUaGwG_dfgavuY6j0fWRjeg/edit" placeholder="Example: https://docs.google.com/spreadsheets/d/1bhuvOg6tJOLQyvvyeXDEAUaGwG_dfgavuY6j0fWRjeg/edit" class=" form-control" required id="id_spreadsheet_database_url">
                   <small class="form-text text-muted">Copy this value from your Google Spreadsheet URL</small>
               </div>
           </div>
@@ -86,7 +91,7 @@
           <div class="form-row mb-4">
               <div class="form-group col-12">
                   <label class="form-control-label" for="id_batch_name">Batch Name</label>
-                  <input type="text" name="batch_name" value="Batch-A-001" placeholder="Example: Batch-A-001" class=" form-control" required="" id="id_batch_name">
+                  <input type="text" name="batch_name" value="Batch-A-001" placeholder="Example: Batch-A-001" class=" form-control" required id="id_batch_name">
                   <small class="form-text text-muted">The registration batch group</small>
               </div>
           </div>
@@ -118,7 +123,7 @@
     <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js" integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js" integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous"></script>
-    <?!= include("javascript"); ?>
+    <?!= include("javascript"); ?> 
 
   </body>
 </html>

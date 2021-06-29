@@ -23,7 +23,6 @@ function getPropsOfChosenStudentsTables(templateSheet) {
     (keyValPair) => {
       let [level, rowPos_Header] = keyValPair;
       level = level.split(CONST.MARKERS.SUPERVISION_LEVEL_PREFIX)[1];
-      console.log("UYEAH UYEAH", level);
       let firstRowPos = rowPos_Header + 1;
       let lastRowPos =  templateSheet.getRange(firstRowPos, CONST.TEMPLATE_FIRST_DATA_COLUMN, 1)
                                      .getNextDataCell(SpreadsheetApp.Direction.DOWN)

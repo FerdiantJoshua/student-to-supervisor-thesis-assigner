@@ -7,7 +7,7 @@ function getOperationParametersOnBatch(spreadsheetDBUrl, batchName) {
   var col2Idx = tableObject["col2Idx"];
 
   var operationParameters = data.filter((row) => {
-    return row[col2Idx["BatchName"]] == batchName;
+    return row[col2Idx["BatchName"]] == batchName || row[col2Idx["BatchName"]] == CONST.BATCH_NAME_ALL;
   });
 
   if (operationParameters.length > 0 ) {

@@ -16,6 +16,7 @@ function doPost(e) {
     operationParams = getOperationParametersOnBatch(params.spreadsheet_database_url, params.batch_name);
     console.log("[DEBUG] operationParams is:\n", operationParams);
 
+    var formResponsesSheetName = params.batch_name;
     Logger.log("[INFO] Running operation: %s", params.operation_type);
     switch (params.operation_type) {
       // Setup
@@ -56,10 +57,15 @@ function doPost(e) {
         break;
       // ResponseManagement
       case "assignStudentsToSheets":
-        assignStudentsToSheets(operationParams["Spreadsheet Assignment URL"]);
+        assignStudentsToSheets(
+          params.spreadsheet_database_url,
+          operationParams["Spreadsheet Assignment URL"],
+          operationParams["Spreadsheet Form Responses URL"],
+          formResponsesSheetName,
+        );
         break;
-      case "clearAllProfessorSheets":
-        clearAllProfessorSheets(operationParams["Spreadsheet Assignment URL"]);
+      case "clearAllStudentQueues":
+        clearAllStudentQueues(operationParams["Spreadsheet Assignment URL"]);
         break;
       // SupervisionRelationsManagement
       case "saveStudentProfessorRelations":
@@ -86,10 +92,10 @@ function doPost(e) {
   template.serviceUrl = ScriptApp.getService().getUrl();
   if (errorMessage == "") {
     template.status = "OK";
-    template.statusMessage = "Operation executed successfully!";
+    template.statusMessage = `Operation "${params.operation_type}" executed successfully!`;
   } else {
     template.status = "ERROR";
-    template.statusMessage = `Operation execution failed! ${errorMessage}`;
+    template.statusMessage = `Operation "${params.operation_type}" execution failed! ${errorMessage}`;
   }
   var html = template.evaluate();
   

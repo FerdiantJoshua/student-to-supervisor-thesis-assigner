@@ -1,6 +1,5 @@
 function getTableFromSheet(sheet, verboseTableName=null) {
   let table = sheet.getDataRange().getValues();
-  // console.log("[DEBUG] table and verboseTableName is:", table, verboseTableName);
   let col2Idx = getCol2Idx(table[0]);
   if (verboseTableName != null)
     Logger.log("[INFO]: col2idx for table '%s' is:\n%s", verboseTableName, col2Idx)
@@ -9,8 +8,7 @@ function getTableFromSheet(sheet, verboseTableName=null) {
 
 function isSheetNonData(sheetName) {
   let loweredSheetName = sheetName.toLowerCase();
-  return loweredSheetName == CONST.SHEET_NAMES.TEMPLATE.toLowerCase() ||
-         loweredSheetName.includes(CONST.SHEET_NAMES.FORM_RESPONSES.toLowerCase());
+  return loweredSheetName == CONST.SHEET_NAMES.TEMPLATE.toLowerCase();
 }
 
 function getCol2Idx(idx2Col) {

@@ -122,7 +122,7 @@ function generateProfessorSheets(spreadsheetDBUrl, spreadsheetAssignmentUrl) {
   console.log("[DEBUG] props_ChosenStudentsTables:", props_ChosenStudentsTables);
   
   // TERMINATE IF the spreadsheets has been PREPARED
-  if (ssTarget.getNumSheets() > 2) {
+  if (ssTarget.getSheets().filter(sheet => isSheetNonData(sheet.getSheetName())).length == 0) {
     throw new AlreadyPreparedSpreadsheetException(
       `Spreadsheet is already prepared! If you WANT TO RESET the spreadsheet, run operation "Delete All Professor Sheets" first.`,
       debug={"spreadsheetAssignmentUrl": spreadsheetAssignmentUrl}
@@ -184,74 +184,125 @@ function updateAssignmentSheetsProtection(spreadsheetDBUrl, spreadsheetAssignmen
     if(professorName != "") {
       let professorSheet = ssTarget.getSheetByName(professorName);
       if (professorSheet == null) {
-        console.warn(`[WARN]: Professor sheet with name "${professorName} is not found! Skipping protection update.."`)
+        console.warn(`[WARNING]: Professor sheet with name "${professorName} is not found! Skipping protection update.."`)
         continue;
       }
       let email = row[emailIdx];
       emailsToAddAsEditor.push(email);
       
-      _updateSheetProtection(professorSheet, me, email, props_ChosenStudentsTables, supervisionLevel);
+      // INITIALIZE or UPDATE protections
+      let prevSheetProt = professorSheet.getProtections(SpreadsheetApp.ProtectionType.SHEET);
+      let prevProts = professorSheet.getProtections(SpreadsheetApp.ProtectionType.RANGE);
+      if (prevSheetProt.length == 0 || prevProts.length == 0) {
+        Logger.info(`[INFO] Initializing new protections for "${professorName}" to "${email}"`);
+        _initializeSheetProtection(
+          professorSheet, me, email, props_ChosenStudentsTables, supervisionLevel, prevSheetProt, prevProts
+        )
+      } else {
+        // Fetch "Supervisions" table from sheet
+        let supervisionSheet = ssSource.getSheetByName(CONST.SHEET_NAMES.SUPERVISIONS);
+        let supervisionsGroupedByProfessor = getSupervisionsOnLevel(supervisionSheet, supervisionLevel, groupByStudent=false);
+        let prevStudents = supervisionsGroupedByProfessor[professorName];
+        let nPrevStudents = prevStudents == null ? 0 : prevStudents.length;
+        Logger.info(`[INFO] Updating existing protections for "${professorName}" to "${email}"`);
+        _updateSheetProtection(
+          professorSheet, email, props_ChosenStudentsTables, supervisionLevel, nPrevStudents, prevSheetProt, prevProts
+        );
+      }
     }
   }
 
-  // manage non-professor sheets and spreadsheet protection
-  let formResponsesSheet = ssTarget.getSheetByName("Form Responses");
-  _setUserAsOnlyEditorOfProtection(me, formResponsesSheet.protect().setDescription('Admin Only'));
+  // Protect non-professor sheets protection
   _setUserAsOnlyEditorOfProtection(me, templateSheet.protect().setDescription('Admin Only'));
-  ssTarget.addEditors(emailsToAddAsEditor); // required to let the delegated professors to edit
+  
+  // Invite professors to edit spreadsheet by email
+  ssTarget.addViewers(emailsToAddAsEditor);
 }
 
-function _updateSheetProtection(professorSheet, currentUser, professorEmail, props_ChosenStudentsTables, supervisionLevel) {
-  let professorName = professorSheet.getName();
-  let previousSheetProtection = professorSheet.getProtections(SpreadsheetApp.ProtectionType.SHEET);
-  let previousProtections = professorSheet.getProtections(SpreadsheetApp.ProtectionType.RANGE);
+function _initializeSheetProtection(
+  professorSheet, currentUser, professorEmail, props_ChosenStudentsTables, supervisionLevel, prevSheetProt, prevProts
+) {
+  if (prevSheetProt.length != 0) {
+    prevSheetProt[0].remove();
+  } else if (prevProts.length != 0) {
+    prevProts.forEach(previousProtection => previousProtection.remove());
+  }
+  let sheetProtection = professorSheet.protect().setDescription("Admin Only").addEditor(currentUser);
 
-  if (previousSheetProtection.length == 0 || previousProtections.length == 0) {
-    Logger.info(`[INFO] Initializing new protections for "${professorName}" to "${professorEmail}"`);
-    if (previousSheetProtection.length != 0) {
-      previousSheetProtection[0].remove();
-    } else if (previousProtections.length != 0) {
-      console.warn(`[WARNING] Sheet "${professorName}" has already had ${previousProtections.length} protection ranges!`)
-    }
-    let sheetProtection = professorSheet.protect().setDescription("Admin Only").addEditor(currentUser);
+  // Create ranges to be unprotected (delegated to professor)
+  var delegatedRanges = {"ranges": [], "enabled": []};
+  for(let level of Object.keys(props_ChosenStudentsTables)) {
+    let props_ChosenStudentsTable = props_ChosenStudentsTables[level];
+    let rangeToDelegate = professorSheet.getRange(
+      props_ChosenStudentsTable.firstRow, CONST.TEMPLATE_FIRST_DATA_COLUMN,
+      props_ChosenStudentsTable.size, 1
+    );
+    let enabled = level == supervisionLevel;
+    delegatedRanges.ranges.push(rangeToDelegate);
+    delegatedRanges.enabled.push(enabled);
+  }
 
-    var delegatedRanges = {"ranges": [], "enabled": []};
-    for(let level of Object.keys(props_ChosenStudentsTables)) {
-      let props_ChosenStudentsTable = props_ChosenStudentsTables[level];
-      let rangeToDelegate = professorSheet.getRange(
-        props_ChosenStudentsTable.firstRow, CONST.TEMPLATE_FIRST_DATA_COLUMN,
-        props_ChosenStudentsTable.size, 1
-      );
-      let enabled = level == supervisionLevel;
-      delegatedRanges.ranges.push(rangeToDelegate);
-      delegatedRanges.enabled.push(enabled);
-    }
-
-    sheetProtection.setUnprotectedRanges(delegatedRanges.ranges);
-    for(let i = 0; i < delegatedRanges.ranges.length; i++) {
-      let delegatedRange = delegatedRanges.ranges[i];
-      let enabled = delegatedRanges.enabled[i];
-      let protection = delegatedRange.protect().addEditor(currentUser);
-      if (enabled) {
-        protection.setDescription(`${professorEmail} Only`).addEditor(professorEmail);
-      } else {
-        protection.setDescription(`(Disabled) ${professorEmail} Only`);
-      }
-    }
-
-  } else {
-    Logger.info(`[INFO] Updating existing protections for "${professorName}" to "${professorEmail}"`);
-    let currentChosenStudentTable = props_ChosenStudentsTables[supervisionLevel];
-    for(let protection of previousProtections) {
-      let protectionFirstCell = protection.getRange().getCell(1, 1);
-      if (protectionFirstCell.getColumn() == CONST.TEMPLATE_FIRST_DATA_COLUMN
-          && currentChosenStudentTable.firstRow == protectionFirstCell.getRow()) {
-        protection.setDescription(`${professorEmail} Only`).addEditor(professorEmail)
-      } else {
-        protection.setDescription(`(Disabled) ${professorEmail} Only`).removeEditor(professorEmail)
-      }
+  // Unprotect and delegate the range
+  sheetProtection.setUnprotectedRanges(delegatedRanges.ranges);
+  for(let i = 0; i < delegatedRanges.ranges.length; i++) {
+    let delegatedRange = delegatedRanges.ranges[i];
+    let enabled = delegatedRanges.enabled[i];
+    let protection = delegatedRange.protect().addEditor(currentUser);
+    if (enabled) {
+      protection.setDescription(`${professorEmail} Only`).addEditor(professorEmail);
+      delegatedRange.setBackground("yellow");
+    } else {
+      protection.setDescription(`(Disabled) ${professorEmail} Only`);
+      protection.getRange().setBackground("#B7B7B7"); // dark gray 1
     }
   }
+}
+
+function _updateSheetProtection(
+  professorSheet, professorEmail, props_ChosenStudentsTables, supervisionLevel, nRowsFilled=0, prevSheetProt, prevProts
+) {
+  let currentChosenStudentTable = props_ChosenStudentsTables[supervisionLevel];
+
+  // Enable or Disable professor's protection ranges
+  for(let protection of prevProts) {
+    let protectionFirstCell = protection.getRange().getCell(1, 1);
+    if (protectionFirstCell.getColumn() == CONST.TEMPLATE_FIRST_DATA_COLUMN
+        && currentChosenStudentTable.firstRow == protectionFirstCell.getRow()) {
+      protection.setDescription(`${professorEmail} Only`).addEditor(professorEmail);
+      protection.getRange().setBackground("#00FF00"); // green; empty or unsaved ranges will be "yellowed" below
+    } else {
+      protection.setDescription(`(Disabled) ${professorEmail} Only`).removeEditor(professorEmail);
+      protection.getRange().setBackground("#B7B7B7"); // dark gray 1
+    }
+  }
+
+  // Adjust unprotected ranges to remaining slots (based on nRowsFilled)
+  let newUnprotectedRanges = [];
+  for(let unprotectedRange of prevSheetProt[0].getUnprotectedRanges()) {
+    if (_isRangeAChosenStudentTable(unprotectedRange, currentChosenStudentTable)) {
+      let newUnprotectedRange = nRowsFilled > 0 && currentChosenStudentTable.size <= nRowsFilled ? null : professorSheet.getRange(
+        currentChosenStudentTable.firstRow + nRowsFilled, unprotectedRange.getCell(1, 1).getColumn(),
+        currentChosenStudentTable.size - nRowsFilled, unprotectedRange.getNumColumns()
+      );
+      if (newUnprotectedRange != null) {
+        newUnprotectedRanges.push(newUnprotectedRange);
+        newUnprotectedRange.setBackground("yellow");
+      }
+    } else {
+      newUnprotectedRanges.push(unprotectedRange);
+    }
+  }
+  prevSheetProt[0].setUnprotectedRanges(newUnprotectedRanges);
+}
+
+function _isRangeAChosenStudentTable(protectionRange, props_chosenStudentTable) {
+  let firstCell = protectionRange.getCell(1, 1);
+  let firstRow = firstCell.getRow();
+  console.log(`[DEBUG] firstrow = ${firstRow}, props_chosenStudentTable =`, props_chosenStudentTable);
+
+  return firstCell.getColumn() == CONST.TEMPLATE_FIRST_DATA_COLUMN
+          && firstRow >= props_chosenStudentTable.firstRow
+          && firstRow < props_chosenStudentTable.firstRow + props_chosenStudentTable.size;
 }
 
 function _setUserAsOnlyEditorOfSpreadsheet(user, spreadsheet) {
@@ -293,9 +344,10 @@ function removeAllEditorsAndProtections(spreadsheetAssignmentUrl) {
 
   let sheets = ssTarget.getSheets();
   for(let sheet of sheets) {
-    sheet.getProtections(SpreadsheetApp.ProtectionType.SHEET)[0].remove();
+    sheet.getProtections(SpreadsheetApp.ProtectionType.SHEET)
+         .forEach(protection => protection.remove());
     sheet.getProtections(SpreadsheetApp.ProtectionType.RANGE)
-         .forEach(range => range.remove());
+         .forEach(protection => {protection.getRange().setBackground("yellow"); protection.remove();});
   }
 }
 
