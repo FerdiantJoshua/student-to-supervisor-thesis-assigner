@@ -2,36 +2,149 @@
   String.prototype.format = function() {
     a = this;
     for (k in arguments) {
-      a = a.replace('{' + k + '}', arguments[k])
+      a = a.replace("{" + k + "}", arguments[k])
     }
     return a
   }
 
+  const BATCH_NAME_ANY = "ANY"
+
   $(document).ready(function() {
-    let submitButton = $('#id_submit_button');
-    submitButton.click((e) => {
+    // Get all DOMs
+    var form = $("#id_form");
+
+    var selectOperationType = $("#id_operation_type");
+
+    var inputBatchName = $("#id_batch_name");
+    var tempBatchName = $("#id_temp_batch_name");
+    var inputNSkippedData = $("#id_n_data_skipped");
+    var checkboxForceSave = $('#id_force_save');
+    var datetimeVerboseName = $("#id_datetime_verbose_name");
+
+    var headerAdditionalParameters = $("#additional_parameters_header");
+    var labelDatetimeOpen = $("#datetime_open_label");
+    var labelDatetimeClose = $("#datetime_close_label");
+
+    var buttonSubmit = $("#id_submit_button");
+
+    var modalConfirmation = $("#id_confirmation_modal");
+    var buttonConfirmation = $("#id_confirmation_button");
+    
+    var switchSpecialOperations = $("#id_special_operations_switch");
+    var switchableOptionValues = $(".switchable");
+
+    var spinner = $("#spinner");
+
+    // Initialize consts
+    const requireParameters = {
+      "batchName": {
+        "actionSets": new Set(["populateFormDropdowns", "setFormOpenCloseDatetime", "updateAssignmentSheetsProtection", "assignStudentsToSheets"]),
+        "dom": $("#batch_name_div"),
+        "sideEffectsHide": [() => inputBatchName.val(BATCH_NAME_ANY)],
+        "sideEffectsShow": [() => inputBatchName.val(tempBatchName.html())],
+      },
+      "nDataSkipped": {
+        "actionSets": new Set(["updateAssignmentSheetsProtection"]),
+        "dom": $("#n_data_skipped_div"),
+        "sideEffectsHide": [],
+        "sideEffectsShow": [() => inputNSkippedData.val("0")],
+      },
+      "forceSave": {
+        "actionSets": new Set(["saveStudentProfessorRelations"]),
+        "dom": $("#force_save_div"),
+        "sideEffectsHide": [],
+        "sideEffectsShow": [],
+      },
+      "dateTime": {
+        "actionSets": new Set(["setFormOpenCloseDatetime", "setAssignmentSpreadsheetGrantRevokeDatetime"]),
+        "dom": $("#datetime_div"),
+        "sideEffectsHide": [],
+        "sideEffectsShow": [
+          () => {
+            let [openLabel, closeLabel] = datetimeVerboseName.html().split("-");
+            labelDatetimeOpen.html(`${openLabel} Datetime`);
+            labelDatetimeClose.html(`${closeLabel} Datetime`);
+          }
+        ],
+      },
+    };
+
+    // Initialize values
+    tempBatchName.html(inputBatchName.val());
+
+    // Set Handlers
+    inputBatchName.change((e) => {
+      tempBatchName.html(inputBatchName.val());
+    })
+
+    checkboxForceSave.change((e) => {
+      if (checkboxForceSave.is(":checked")) {
+        checkboxForceSave.attr("value", "true");
+      } else {
+        checkboxForceSave.attr("value", "false");
+      }
+    });
+
+    $("#id_datetime_open").datetimepicker();
+    $("#id_datetime_close").datetimepicker();
+
+    selectOperationType.change((e) => {
+      let selectedOptTypeVal = $("#id_operation_type option:selected").val();
+      // For dateTime inputs' label
+      if (requireParameters["dateTime"]["actionSets"].has(selectedOptTypeVal)) {
+        if (selectedOptTypeVal.includes("OpenClose"))
+          datetimeVerboseName.html("Open-Close")
+        else if (selectedOptTypeVal.includes("GrantRevoke"))
+          datetimeVerboseName.html("Grant-Revoke")
+      }
+
+      for (let requireParameter of Object.values(requireParameters)) {
+        if (requireParameter["actionSets"].has(selectedOptTypeVal)) {
+          requireParameter["dom"].removeClass("d-none");
+          requireParameter["dom"].addClass("shown-param");
+          requireParameter["sideEffectsShow"].forEach(func => func());
+        } else {
+          requireParameter["dom"].addClass("d-none");
+          requireParameter["dom"].removeClass("shown-param");
+          requireParameter["sideEffectsHide"].forEach(func => func());
+        }
+      }
+      
+      if ($(".shown-param").length == 0) {
+        headerAdditionalParameters.addClass("d-none");
+      } else {
+        headerAdditionalParameters.removeClass("d-none");
+      }
+    })
+
+    buttonSubmit.click((e) => {
       e.preventDefault();
-      let selectedOptTypeText = $('#id_operation_type option:selected').text();
+      let selectedOptTypeText = $("#id_operation_type option:selected").text();
+      let selectedOptTypeVal = $("#id_operation_type option:selected").val();
       let loweredSelectedOptionText = selectedOptTypeText.toLowerCase();
       let additionalMessage = ""
-      if (loweredSelectedOptionText.includes('delete')) {
+      if (loweredSelectedOptionText.includes("delete")) {
         additionalMessage = "</br>The data you request will be DELETED PERMANENTLY.</br><b>You cannot undo this action</b>."
       }
-      let batchName = $('#id_batch_name').val()
-      let modalBody = 'Are you sure to execute <b>"{0}"</b> on <b>"{1}"</b>?{2}'.format(selectedOptTypeText, batchName, additionalMessage)
-      $('#id_confirmation_modal_body').html(modalBody)
+      let batchName = inputBatchName.val()
+      let modalBody = batchName != BATCH_NAME_ANY
+                    ? 'Are you sure to execute <b>"{0}"</b> on <b>"{1}"</b>?{2}'.format(selectedOptTypeText, batchName, additionalMessage)
+                    : 'Are you sure to execute <b>"{0}"</b>?{1}'.format(selectedOptTypeText, additionalMessage)
+      $("#id_confirmation_modal_body").html(modalBody)
     })
 
-    let confirmationModal = $('#id_confirmation_modal');
-    let confirmationButton = $('#id_confirmation_button');
-    confirmationModal.on('shown.bs.modal', () => {
-      confirmationButton.focus();
+    modalConfirmation.on("shown.bs.modal", () => {
+      buttonConfirmation.focus();
     })
 
-    let switchDangerousOperations = $('#switchSpecialOperations');
-    let switchableOptionValues = $('.switchable');
-    switchDangerousOperations.change(function() {
-      switchableOptionValues.toggleClass('d-none');
+    buttonConfirmation.click((e) => {
+      if(form[0].checkValidity()) {
+        spinner.removeClass('d-none');
+      }
+    })
+
+    switchSpecialOperations.change(function() {
+      switchableOptionValues.toggleClass("d-none");
     });
   })
 </script>

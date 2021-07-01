@@ -1,5 +1,9 @@
 const CONST = {
+  // Google App Scripts' timeout is 360. I use this to allow pre-timeout handling in long operation (e.g. updateAssignmentSheetsProtection)
+  "APP_TIMEOUT_SECONDS": 345,
+
   "BATCH_NAME_ALL": "ALL",
+  "BATCH_NAME_ANY": "ANY",
 
   "COL_NAMES" : {
     // From Registration Form

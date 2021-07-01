@@ -30,6 +30,13 @@ function doPost(e) {
           operationParams["Form Professor Dropdown Id"]
         );
         break;
+      case "setFormOpenCloseDatetime":
+        setFormOpenCloseDatetime(
+          operationParams["Form URL"],
+          params.datetime_open,
+          params.datetime_close,
+        )
+        break;
       case "generateProfessorSheets":
         generateProfessorSheets(
           params.spreadsheet_database_url,
@@ -41,13 +48,15 @@ function doPost(e) {
           params.spreadsheet_database_url,
           operationParams["Spreadsheet Assignment URL"],
           operationParams["Supervision Level"],
+          parseInt(params.n_data_skipped),
         );
         break;
-      case "changeAllEditorsToViewers":
-        changeAllEditorsToViewers(operationParams["Spreadsheet Assignment URL"]);
-        break;
-      case "changeAllViewersToEditors":
-        changeAllViewersToEditors(operationParams["Spreadsheet Assignment URL"]);
+      case "setAssignmentSpreadsheetGrantRevokeDatetime":
+        setAssignmentSpreadsheetGrantRevokeDatetime(
+          operationParams["Spreadsheet Assignment URL"],
+          params.datetime_open,
+          params.datetime_close,
+          );
         break;
       case "removeAllEditorsAndProtections":
         removeAllEditorsAndProtections(operationParams["Spreadsheet Assignment URL"]);
@@ -71,7 +80,8 @@ function doPost(e) {
       case "saveStudentProfessorRelations":
         saveStudentProfessorRelations(
           params.spreadsheet_database_url,
-          operationParams["Spreadsheet Assignment URL"]
+          operationParams["Spreadsheet Assignment URL"],
+          params.force_save === 'true',
         );
         break;
       default:

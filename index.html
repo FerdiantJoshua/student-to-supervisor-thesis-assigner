@@ -16,6 +16,7 @@
 <!--    <meta name="theme-color" content="#ffffff">-->
 
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-datetimepicker/2.5.20/jquery.datetimepicker.css" integrity="sha512-bYPO5jmStZ9WI2602V2zaivdAnbAhtfzmxnEGh9RwtlI00I9s8ulGe4oBa5XxiC6tCITJH/QG70jswBhbLkxPw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <!-- <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.0.8/css/all.css"
           integrity="sha384-3AB7yXWz4OeoZcPbieVW64vVXEwADiYyAEhwilzWsLw+9FgqpyjjStpPnpBO8o8S" crossorigin="anonymous"> -->
 
@@ -58,26 +59,68 @@
             </div>
         </div>
 
-        <form action="<?= serviceUrl ?>" method="post" enctype="multipart/form-data">
+        <form action="<?= serviceUrl ?>" method="post" enctype="multipart/form-data" id="id_form">
           <h4>Operation</h4>
           <div class="form-row mb-4">
               <select name="operation_type" placeholder="Operation Type" class="form-control mb-1" id="id_operation_type" required>
                   <option value="">=== Choose An Operation ===</option>
                   <option value="populateFormDropdowns">Prepare Form Dropdowns</option>
+                  <option value="setFormOpenCloseDatetime">Set Form Open/Close Datetime</option>
                   <option value="updateAssignmentSheetsProtection">Protect Assignment Sheets</option>
                   <option value="assignStudentsToSheets">Assign Students from Form Response to Professor Sheets</option>
-                  <option value="changeAllViewersToEditors">Allow All Professors to Edit</option>
-                  <option value="changeAllEditorsToViewers">Disallow All Professors to Edit</option>
+                  <option value="setAssignmentSpreadsheetGrantRevokeDatetime">Set Professors Edit Access Grant/Revoke Datetime</option>
+                  <!-- <option value="changeAllViewersToEditors">Allow All Professors to Edit</option>
+                  <option value="changeAllEditorsToViewers">Disallow All Professors to Edit</option> -->
                   <option value="saveStudentProfessorRelations">Save Student Professor Relations</option>
                   <option value="clearAllStudentQueues">Clear All Student Queues</option>
-                  <option value="removeAllEditorsAndProtections" class="font-italic switchable d-none">Remove All Editors And Protections from Assignment Sheets</option>
-                  <option value="generateProfessorSheets" class="font-italic switchable d-none">Generate Professor Sheets</option>
-                  <option value="deleteAllProfessorSheets" class="font-italic font-weight-bold switchable d-none">Delete All Professor Sheets (DANGEROUS)</option>
+                  <option value="removeAllEditorsAndProtections" class="bg-warning text-dark switchable d-none">Remove All Editors And Protections from Assignment Sheets</option>
+                  <option value="generateProfessorSheets" class="bg-warning text-dark switchable d-none">Generate Professor Sheets</option>
+                  <option value="deleteAllProfessorSheets" class="bg-danger text-white switchable d-none">Delete All Professor Sheets</option>
                 </select>
               <div class="custom-control custom-switch">
-                <input type="checkbox" class="custom-control-input" id="switchSpecialOperations">
-                <label class="custom-control-label" for="switchSpecialOperations">Show Special Operations</label>
+                <input type="checkbox" class="custom-control-input" id="id_special_operations_switch">
+                <label class="custom-control-label" for="id_special_operations_switch">Show Special Operations</label>
               </div>
+          </div>
+          <h4 id="additional_parameters_header">Additional Parameters</h4>
+          <div class="form-row shown-param" id="batch_name_div">
+              <div class="form-group col-12">
+                  <label class="form-control-label" for="id_batch_name">Batch Name</label>
+                  <input type="text" name="batch_name" value="Batch-A-001" placeholder="Example: Batch-A-001" class="form-control" required id="id_batch_name">
+                  <small class="form-text text-muted">The registration batch group</small>
+                  <p id="id_temp_batch_name" class="d-none"></p>
+              </div>
+          </div>
+          <div class="form-row d-none" id="n_data_skipped_div">
+              <div class="form-group col-12">
+                  <label class="form-control-label" for="id_n_data_skipped">Amount of Data to be Skipped</label>
+                  <input type="number" name="n_data_skipped" value="0" placeholder="Example: 60" class="form-control" required id="id_n_data_skipped">
+                  <small class="form-text text-danger">Leave this as is unless you're told to do otherwise</small>
+              </div>
+          </div>
+          <div class="form-row d-none" id="force_save_div">
+              <div class="form-group col-12">
+                  <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="force_save" value="false" id="id_force_save">
+                      <label class="form-check-label" for="id_force_save">
+                        Force Save
+                      </label>
+                      <small class="form-text text-danger">Save with force, bypassing all validations</small>
+                  </div>
+              </div>
+          </div>
+          <div class="form-row mb-4 d-none" id="datetime_div">
+              <div class="form-group col-6">
+                  <label class="form-control-label" for="id_datetime_open" id="datetime_open_label">Open Datetime</label>
+                  <input type="text" name="datetime_open" value="" placeholder="(yyyy/mm/dd hh:mm) e.g. 2021/08/01 00:00" class="form-control" id="id_datetime_open">
+                  <small class="form-text text-muted">Enter a date earlier than now to run immediately</small>
+              </div>
+              <div class="form-group col-6">
+                  <label class="form-control-label" for="id_datetime_close" id="datetime_close_label">Close Datetime</label>
+                  <input type="text" name="datetime_close" value="" placeholder="(yyyy/mm/dd hh:mm) e.g. 2021/08/08 00:00 (Format: yyyy/mm/dd hh:mm)" class="form-control" id="id_datetime_close">
+                  <small class="form-text text-muted">Enter a date earlier than now to run immediately</small>
+              </div>
+              <p id="id_datetime_verbose_name" class="d-none"></p>
           </div>
           <h4>Spreadsheets</h4>
           <div class="form-row mb-4">
@@ -87,14 +130,7 @@
                   <small class="form-text text-muted">Copy this value from your Google Spreadsheet URL</small>
               </div>
           </div>
-          <h4>Additional Parameters</h4>
-          <div class="form-row mb-4">
-              <div class="form-group col-12">
-                  <label class="form-control-label" for="id_batch_name">Batch Name</label>
-                  <input type="text" name="batch_name" value="Batch-A-001" placeholder="Example: Batch-A-001" class=" form-control" required id="id_batch_name">
-                  <small class="form-text text-muted">The registration batch group</small>
-              </div>
-          </div>
+          <button id="id_submit_button" type="button" class="btn btn-primary mb-4" data-toggle="modal" data-target="#id_confirmation_modal">Submit</button>
             
           <!-- Confirmation Modal -->
           <div class="modal fade" id="id_confirmation_modal" tabindex="-1" role="dialog" aria-labelledby="id_confirmation_modal_title" aria-hidden="true">
@@ -116,13 +152,21 @@
               </div>
             </div>
           </div>
-          <button id="id_submit_button" type="button" class="btn btn-primary" data-toggle="modal" data-target="#id_confirmation_modal">Submit</button>
         </form>
 
+        <!-- Spinner -->
+        <div id="spinner" class="bg-secondary d-none" style="position: fixed; width: 100%; height: 100%; z-index: 2000; padding-top:25%; top: 0; left: 0; opacity: 0.5; filter: alpha(opacity=50);">
+          <div class="d-flex justify-content-center">
+            <div class="spinner-border" style="width: 12rem; height: 12rem;" role="status">
+              <span class="sr-only">Loading...</span>
+            </div>
+          </div>
+        </div>
     </main>
     <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js" integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js" integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-datetimepicker/2.5.20/jquery.datetimepicker.full.min.js" integrity="sha512-AIOTidJAcHBH2G/oZv9viEGXRqDNmfdPVPYOYKGy3fti0xIplnlgMHUGfuNRzC6FkzIo0iIxgFnr9RikFxK+sw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <?!= include("javascript"); ?> 
 
   </body>

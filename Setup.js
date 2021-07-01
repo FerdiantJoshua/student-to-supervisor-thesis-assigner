@@ -99,6 +99,62 @@ function _updateDropdownProfessor(form, professorDropdownId, professorSheet, nam
   professorDropdown.setChoiceValues(formItemsProfessor);
 }
 
+function setFormOpenCloseDatetime(formTargetUrl, datetimeOpen, datetimeClose) {
+  let today = new Date();
+
+  if (datetimeOpen) {
+    let openDate = new Date(datetimeOpen);
+    if (today < openDate) {
+      let openTrigger = ScriptApp.newTrigger("_openFormTrigger")
+                                .timeBased()
+                                .at(openDate)
+                                .create();
+      setupTriggerArguments(openTrigger, [formTargetUrl], false);
+    } else {
+      _openForm(formTargetUrl);
+    }
+  }
+
+  if (datetimeClose) {
+    let closeDate = new Date(datetimeClose);
+    if (today < closeDate) {
+      let closeTrigger = ScriptApp.newTrigger("_closeFormTrigger")
+                                  .timeBased()
+                                  .at(closeDate)
+                                  .create();
+      setupTriggerArguments(closeTrigger, [formTargetUrl, datetimeClose], false);
+    } else {
+      _closeForm(formTargetUrl, today.toString().substring(4,21));
+    }
+  }
+}
+
+function _openFormTrigger(event) {
+  var functionArgs = handleTriggered(event.triggerUid);
+  Logger.log("Function arguments: %s", functionArgs);
+
+  let [formTargetUrl] = functionArgs;
+  _openForm(formTargetUrl);
+}
+
+function _openForm(formTargetUrl) {
+  FormApp.openByUrl(formTargetUrl).setAcceptingResponses(true);
+}
+
+function _closeFormTrigger(event) {
+  var functionArgs = handleTriggered(event.triggerUid);
+  Logger.log("Function arguments: %s", functionArgs);
+
+  let [formTargetUrl, datetimeClose] = functionArgs;
+  _closeForm(formTargetUrl, datetimeClose);
+}
+
+function _closeForm(formTargetUrl, datetimeClose) {
+  FormApp.openByUrl(formTargetUrl)
+         .setCustomClosedFormMessage(`Formulir telah ditutup pada "${datetimeClose}".`)
+         .setAcceptingResponses(false);
+}
+
 function generateProfessorSheets(spreadsheetDBUrl, spreadsheetAssignmentUrl) {
   var ssSource = SpreadsheetApp.openByUrl(spreadsheetDBUrl);
 
@@ -150,7 +206,8 @@ function generateProfessorSheets(spreadsheetDBUrl, spreadsheetAssignmentUrl) {
   }
 }
 
-function updateAssignmentSheetsProtection(spreadsheetDBUrl, spreadsheetAssignmentUrl, supervisionLevel) {
+function updateAssignmentSheetsProtection(spreadsheetDBUrl, spreadsheetAssignmentUrl, supervisionLevel, nDataSkipped=0) {
+  var startTime = new Date().getTime();;
   var ssSource = SpreadsheetApp.openByUrl(spreadsheetDBUrl);
 
   // Read professor table from sheet "Professors"
@@ -178,10 +235,25 @@ function updateAssignmentSheetsProtection(spreadsheetDBUrl, spreadsheetAssignmen
   // NOTE: this line must be executed before "_updateSheetProtection" to prevent existing editors to have access to the protected sheet
   _setUserAsOnlyEditorOfSpreadsheet(me, ssTarget);
 
+  // Protect non-professor sheets protection
+  _setUserAsOnlyEditorOfProtection(me, templateSheet.protect().setDescription('Admin Only'));
+
   var emailsToAddAsEditor = []
-  for(let row of data) {
+  Logger.log(`[INFO] Skipping ${nDataSkipped} data as requested`);
+  for(var i = nDataSkipped; i < data.length; i++) {
+    let row = data[i];
     let professorName = row[nameIdx];
     if(professorName != "") {
+      // Self-terminate on internal timeout with email notification to let user continue the operation
+      if ((new Date().getTime() - startTime) / 1000 > CONST.APP_TIMEOUT_SECONDS){
+        emailReportToSelf(
+          subject="Partially Complete Operation Notification",
+          message=`Operation "updateAssignmentSheetsProtection" was stopped due to timeout.\n\n`
+          + `Please rerun the operation with this parameter "Amount of Data to be Skipped = ${i}"`
+        );
+        return
+      }
+
       let professorSheet = ssTarget.getSheetByName(professorName);
       if (professorSheet == null) {
         console.warn(`[WARNING]: Professor sheet with name "${professorName} is not found! Skipping protection update.."`)
@@ -211,11 +283,8 @@ function updateAssignmentSheetsProtection(spreadsheetDBUrl, spreadsheetAssignmen
       }
     }
   }
-
-  // Protect non-professor sheets protection
-  _setUserAsOnlyEditorOfProtection(me, templateSheet.protect().setDescription('Admin Only'));
   
-  // Invite professors to edit spreadsheet by email
+  // Invite professors to view spreadsheet by their email
   ssTarget.addViewers(emailsToAddAsEditor);
 }
 
@@ -298,7 +367,7 @@ function _updateSheetProtection(
 function _isRangeAChosenStudentTable(protectionRange, props_chosenStudentTable) {
   let firstCell = protectionRange.getCell(1, 1);
   let firstRow = firstCell.getRow();
-  console.log(`[DEBUG] firstrow = ${firstRow}, props_chosenStudentTable =`, props_chosenStudentTable);
+  // console.log(`[DEBUG] firstrow = ${firstRow}, props_chosenStudentTable =`, props_chosenStudentTable);
 
   return firstCell.getColumn() == CONST.TEMPLATE_FIRST_DATA_COLUMN
           && firstRow >= props_chosenStudentTable.firstRow
@@ -320,20 +389,62 @@ function _setUserAsOnlyEditorOfProtection(user, protection) {
   }
 }
 
-function changeAllEditorsToViewers(spreadsheetAssignmentUrl) {
+function setAssignmentSpreadsheetGrantRevokeDatetime(spreadsheetAssignmentUrl, datetimeGrant, datetimeRevoke) {
+  let today = new Date();
+
+  if (datetimeGrant) {
+    let grantDate = new Date(datetimeGrant);
+    if (today < grantDate) {
+      let grantTrigger = ScriptApp.newTrigger("_grantAccessTrigger")
+                                .timeBased()
+                                .at(grantDate)
+                                .create();
+      setupTriggerArguments(grantTrigger, [spreadsheetAssignmentUrl], false);
+    } else {
+      _changeAllViewersToEditors(spreadsheetAssignmentUrl);
+    }
+  }
+
+  if (datetimeRevoke) {
+    let revokeDate = new Date(datetimeRevoke);
+    if (today < revokeDate) {
+      let revokeTrigger = ScriptApp.newTrigger("_revokeAccessTrigger")
+                                  .timeBased()
+                                  .at(revokeDate)
+                                  .create();
+      setupTriggerArguments(revokeTrigger, [spreadsheetAssignmentUrl], false);
+    } else {
+      _changeAllEditorsToViewers(spreadsheetAssignmentUrl);
+    }
+  }
+}
+
+function _grantAccessTrigger(event) {
+  var functionArgs = handleTriggered(event.triggerUid);
+  let [spreadsheetAssignmentUrl] = functionArgs;
+  _changeAllViewersToEditors(spreadsheetAssignmentUrl);
+}
+
+function _revokeAccessTrigger(event) {
+  var functionArgs = handleTriggered(event.triggerUid);
+  let [spreadsheetAssignmentUrl] = functionArgs;
+  _changeAllEditorsToViewers(spreadsheetAssignmentUrl);
+}
+
+function _changeAllViewersToEditors(spreadsheetAssignmentUrl) {
+  var ssTarget = SpreadsheetApp.openByUrl(spreadsheetAssignmentUrl);
+  for(let user of ssTarget.getViewers()) {
+    ssTarget.addEditor(user);
+  }
+}
+
+function _changeAllEditorsToViewers(spreadsheetAssignmentUrl) {
   var ssTarget = SpreadsheetApp.openByUrl(spreadsheetAssignmentUrl);
   var me = Session.getEffectiveUser();
   ssTarget.addEditor(me);
   for(let user of ssTarget.getEditors()) {
     ssTarget.removeEditor(user);
     ssTarget.addViewer(user);
-  }
-}
-
-function changeAllViewersToEditors(spreadsheetAssignmentUrl) {
-  var ssTarget = SpreadsheetApp.openByUrl(spreadsheetAssignmentUrl);
-  for(let user of ssTarget.getViewers()) {
-    ssTarget.addEditor(user);
   }
 }
 

@@ -1,5 +1,5 @@
 // "ssSource" and "ssTarget" VALUES ARE REVERSED in this function!
-function saveStudentProfessorRelations(spreadsheetDBUrl, spreadsheetAssignmentUrl) {
+function saveStudentProfessorRelations(spreadsheetDBUrl, spreadsheetAssignmentUrl, forceSave=false) {
   var ssSource = SpreadsheetApp.openByUrl(spreadsheetAssignmentUrl);
 
   // Fetch 'Chosen Student List Table' info from 'Template' sheet
@@ -25,34 +25,42 @@ function saveStudentProfessorRelations(spreadsheetDBUrl, spreadsheetAssignmentUr
 
     for(let level of Object.keys(props_ChosenStudentsTables)) {
       let props = props_ChosenStudentsTables[level];
-      let supervisionsGroupedByProfessor = getSupervisionsOnLevel(supervisionsSheet, level, groupByStudent=false);
-      let prevNStudents = _getNStudentsOfProfessorOnLevel(supervisionsGroupedByProfessor, professorSheetName, level);
+      let rowValues = [];
 
-      let prevStudentRange = currStudentRange = validStudentNames = null;
-      let [prevValues, currValues] = [[],[]];
-      if (prevNStudents != 0) {
-        prevStudentRange = professorSheet.getRange(props.firstRow, CONST.TEMPLATE_FIRST_DATA_COLUMN, prevNStudents);
-        prevValues = prevStudentRange.getValues();
+      if (!forceSave) {
+        let supervisionsGroupedByProfessor = getSupervisionsOnLevel(supervisionsSheet, level, groupByStudent=false);
+        let prevNStudents = _getNStudentsOfProfessorOnLevel(supervisionsGroupedByProfessor, professorSheetName, level);
+
+        let prevStudentRange = currStudentRange = validStudentNames = null;
+        let [prevValues, currValues] = [[],[]];
+        // To respect the 'data validation' in "Chosen Students Tables", values from prev batch are handled differently from curr batch
+        if (prevNStudents != 0) {
+          prevStudentRange = professorSheet.getRange(props.firstRow, CONST.TEMPLATE_FIRST_DATA_COLUMN, prevNStudents);
+          prevValues = prevStudentRange.getValues();
+        }
+        if (prevNStudents != props.size) {
+          currStudentRange = professorSheet.getRange(props.firstRow + prevNStudents, CONST.TEMPLATE_FIRST_DATA_COLUMN, props.size - prevNStudents);
+          currValues = currStudentRange.getValues();
+          validStudentNames = professorSheet.getRange(1, validStudentValuesCol, CONST.FIRST_N_VALID_STUDENTS + 1)   // +1 for reserved "CLOSED"
+                                            .getValues().flat();
+          _validateStudentValues(currValues, validStudentNames);
+          _sortPutClosedSlotsFirst(currValues);
+
+          currStudentRange.setValues(currValues);
+          currStudentRange.setBackground("cyan");
+        }
+        rowValues = prevValues.concat(currValues);
+      } else {
+        studentRange = professorSheet.getRange(props.firstRow, CONST.TEMPLATE_FIRST_DATA_COLUMN, props.size);
+        studentRange.setBackground("cyan");
+        rowValues = studentRange.getValues();
       }
-      // To respect the 'data validation' in "Chosen Students Tables", values from prev batch are handled differently from curr batch
-      if (prevNStudents != props.size) {
-        currStudentRange = professorSheet.getRange(props.firstRow + prevNStudents, CONST.TEMPLATE_FIRST_DATA_COLUMN, props.size - prevNStudents);
-        currValues = currStudentRange.getValues();
-        // TODO: Optimize this line
-        validStudentNames = professorSheet.getRange(1, validStudentValuesCol, CONST.FIRST_N_VALID_STUDENTS + 1)   // +1 for reserved "CLOSED"
-                                          .getValues().flat();
-        _validateStudentValues(currValues, validStudentNames);
-        _sortPutClosedSlotsFirst(currValues);
 
-        currStudentRange.setValues(currValues);
-        currStudentRange.setBackground("cyan");
-      }
-
-      let rowToInsert = prevValues.concat(currValues)
-                                  .filter(studentName => studentName[0] != "")
-                                  .map(studentName => [_extractStudentName(studentName), professorSheetName, parseInt(level)]);
-      console.log("[DEBUG] rowToInsert", rowToInsert);
-      valuesToInsert.push(...rowToInsert);
+      let rowsToInsert = rowValues
+                          .filter(studentName => studentName[0] != "")
+                          .map(studentName => [_extractStudentName(studentName[0]), professorSheetName, parseInt(level)]);
+      // console.log("[DEBUG] rowsToInsert", rowsToInsert);
+      valuesToInsert.push(...rowsToInsert);
     }
   }
   console.log("[DEBUG] valuesToInsert:", valuesToInsert);
@@ -81,7 +89,7 @@ function _validateStudentValues(studentValues, validStudentNames) {
   let i = 0;
   while (i < studentValues.length) {
     name = studentValues[i][0];
-    console.log("[DEBUG] name, validSet, dupSet =", name, validStudentNamesSet, duplicationSet);
+    // console.log("[DEBUG] name, validSet, dupSet =", name, validStudentNamesSet, duplicationSet);
     if (name != "" && name != CONST.CLOSED_SLOT_VALUE) {
       if (!validStudentNamesSet.has(name)) {
         studentValues[i][0] = CONST.CLOSED_SLOT_VALUE;
@@ -125,7 +133,7 @@ function _sortPutClosedSlotsFirst(values_Array2d) {
 
 function _extractStudentName(studentNameWithNRP) {
   if (studentNameWithNRP != CONST.CLOSED_SLOT_VALUE) {
-    return studentNameWithNRP[0].split(" - ", 2)[1]
+    return studentNameWithNRP.split(" - ", 2)[1]
   }
   return studentNameWithNRP
 }
