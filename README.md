@@ -34,5 +34,9 @@ Here is how you can use the program. The flow consists of 10 steps:
 
 ![HowDoesItWork](img/HowDoesItWork.jpg)
 
+### Complete Program Manual
+
+For more complete documentation/manual, check the [docs here](docs/Manual_(Student-to-Supervisor_Thesis_Assignment).pdf).
+
 ## License
 Copyright © 2021, Ferdiant Joshua Muis. Released under [MIT License](./LICENSE).
