@@ -1,15 +1,16 @@
 const CONST = {
-  // Google App Scripts' timeout is 360. I use this to allow pre-timeout handling in long operation (e.g. updateAssignmentSheetsProtection)
-  "APP_TIMEOUT_SECONDS": 345,
+  "APP_TIMEOUT_SECONDS": 345,  // Google App Scripts' timeout is 360. This lesser value allows timeout handling for long operation
+  "LOCK_WAIT_SECONDS": 3,
 
-  "BATCH_NAME_ALL": "ALL",
-  "BATCH_NAME_ANY": "ANY",
+  "BATCH_NAME_DEFAULT": "DEFAULT",
+  "HTML_DEFAULT_VALUES": {
+    "BATCH_NAME": "Batch-A-001",
+    "SPREADSHEET_DB_URL": "https://docs.google.com/spreadsheets/d/1bhuvOg6tJOLQyvvyeXDEAUaGwG_dfgavuY6j0fWRjeg/edit",
+  },
 
   "COL_NAMES" : {
-    // From Registration Form
-    "PILIHAN_DOSEN": "Pilihan Dosen",
-    // From Template sheet in Assignment spreadsheet
-    "PEMBIMBING_LAIN": "Pembimbing Lain",
+    "PILIHAN_DOSEN": "Pilihan Dosen",  // From Registration Form
+    "PEMBIMBING_LAIN": "Pembimbing Lain",  // From Template sheet in Assignment spreadsheet
   },
 
   "SHEET_NAMES": {
@@ -33,7 +34,7 @@ const CONST = {
   "TEMPLATE_VALID_STUDENTS_COL_GETTER": (templateSheet) => templateSheet.getMaxColumns(),  // Getter for last column
 
   "CLOSED_SLOT_VALUE": "CLOSED",
-  "FIRST_N_VALID_STUDENTS": 10,
+  "FIRST_N_VALID_STUDENTS": 40,
 };
 
 function test() {

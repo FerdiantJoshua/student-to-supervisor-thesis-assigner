@@ -207,7 +207,7 @@ function generateProfessorSheets(spreadsheetDBUrl, spreadsheetAssignmentUrl) {
 }
 
 function updateAssignmentSheetsProtection(spreadsheetDBUrl, spreadsheetAssignmentUrl, supervisionLevel, nDataSkipped=0) {
-  var startTime = new Date().getTime();;
+  var startTime = new Date().getTime();
   var ssSource = SpreadsheetApp.openByUrl(spreadsheetDBUrl);
 
   // Read professor table from sheet "Professors"
@@ -245,7 +245,7 @@ function updateAssignmentSheetsProtection(spreadsheetDBUrl, spreadsheetAssignmen
     let professorName = row[nameIdx];
     if(professorName != "") {
       // Self-terminate on internal timeout with email notification to let user continue the operation
-      if ((new Date().getTime() - startTime) / 1000 > CONST.APP_TIMEOUT_SECONDS){
+      if ((new Date().getTime() - startTime) / 1000 >= CONST.APP_TIMEOUT_SECONDS){
         emailReportToSelf(
           subject="Partially Complete Operation Notification",
           message=`Operation "updateAssignmentSheetsProtection" was stopped due to timeout.\n\n`

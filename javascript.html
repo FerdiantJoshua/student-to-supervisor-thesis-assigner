@@ -7,13 +7,14 @@
     return a
   }
 
-  const BATCH_NAME_ANY = "ANY"
+  const BATCH_NAME_DEFAULT = "DEFAULT"
 
   $(document).ready(function() {
     // Get all DOMs
     var form = $("#id_form");
 
     var selectOperationType = $("#id_operation_type");
+    var inputOperationDisplayName = $("#id_operation_display_name");
 
     var inputBatchName = $("#id_batch_name");
     var tempBatchName = $("#id_temp_batch_name");
@@ -40,7 +41,7 @@
       "batchName": {
         "actionSets": new Set(["populateFormDropdowns", "setFormOpenCloseDatetime", "updateAssignmentSheetsProtection", "assignStudentsToSheets"]),
         "dom": $("#batch_name_div"),
-        "sideEffectsHide": [() => inputBatchName.val(BATCH_NAME_ANY)],
+        "sideEffectsHide": [() => inputBatchName.val(BATCH_NAME_DEFAULT)],
         "sideEffectsShow": [() => inputBatchName.val(tempBatchName.html())],
       },
       "nDataSkipped": {
@@ -90,6 +91,9 @@
 
     selectOperationType.change((e) => {
       let selectedOptTypeVal = $("#id_operation_type option:selected").val();
+      // Passing the operationDisplayName (NOT operationType!) to backend for display
+      inputOperationDisplayName.val($("#id_operation_type option:selected").text());
+
       // For dateTime inputs' label
       if (requireParameters["dateTime"]["actionSets"].has(selectedOptTypeVal)) {
         if (selectedOptTypeVal.includes("OpenClose"))
@@ -127,7 +131,7 @@
         additionalMessage = "</br>The data you request will be DELETED PERMANENTLY.</br><b>You cannot undo this action</b>."
       }
       let batchName = inputBatchName.val()
-      let modalBody = batchName != BATCH_NAME_ANY
+      let modalBody = batchName != BATCH_NAME_DEFAULT
                     ? 'Are you sure to execute <b>"{0}"</b> on <b>"{1}"</b>?{2}'.format(selectedOptTypeText, batchName, additionalMessage)
                     : 'Are you sure to execute <b>"{0}"</b>?{1}'.format(selectedOptTypeText, additionalMessage)
       $("#id_confirmation_modal_body").html(modalBody)

@@ -1,8 +1,8 @@
 function getTableFromSheet(sheet, verboseTableName=null) {
   let table = sheet.getDataRange().getValues();
   let col2Idx = getCol2Idx(table[0]);
-  if (verboseTableName != null)
-    Logger.log("[INFO]: col2idx for table '%s' is:\n%s", verboseTableName, col2Idx)
+  // if (verboseTableName != null)
+  //   Logger.log("[INFO]: col2idx for table '%s' is:\n%s", verboseTableName, col2Idx)
   return {"data": table.slice(1), "col2Idx": col2Idx};
 }
 

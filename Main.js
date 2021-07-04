@@ -1,6 +1,8 @@
 function doGet(e) {  
   var template = HtmlService.createTemplateFromFile("index");
   template.serviceUrl = ScriptApp.getService().getUrl();
+  template.batchName = CONST.HTML_DEFAULT_VALUES.BATCH_NAME;
+  template.spreadsheetDatabaseUrl = CONST.HTML_DEFAULT_VALUES.SPREADSHEET_DB_URL;
   template.status = "-";
   template.statusMessage = "No message";
   var html = template.evaluate();
@@ -13,17 +15,23 @@ function doPost(e) {
   console.log("[DEBUG] params is:\n", params);
 
   try {
-    operationParams = getOperationParametersOnBatch(params.spreadsheet_database_url, params.batch_name);
+    operationParams = getOperationParametersOnBatch(params.spreadsheetDatabaseUrl, params.batchName);
     console.log("[DEBUG] operationParams is:\n", operationParams);
 
-    var formResponsesSheetName = params.batch_name;
-    Logger.log("[INFO] Running operation: %s", params.operation_type);
-    switch (params.operation_type) {
+    let lock = LockService.getScriptLock();
+    let success = lock.tryLock(CONST.LOCK_WAIT_SECONDS * 1000);
+    if (!success) {
+      throw new WaitLockTimeoutException(`Another operation is still running! Please wait until all operation executions complete.`)
+    }
+
+    var formResponsesSheetName = params.batchName;
+    Logger.log("[INFO] Running operation: %s", params.operationType);
+    switch (params.operationType) {
       // Setup
       case "populateFormDropdowns":
         populateFormDropdowns(
           operationParams["Form URL"],
-          params.spreadsheet_database_url,
+          params.spreadsheetDatabaseUrl,
           operationParams["Supervision Level"],
           operationParams["Form Name Dropdown Id"],
           operationParams["Form Topic Dropdown Ids"],
@@ -33,29 +41,29 @@ function doPost(e) {
       case "setFormOpenCloseDatetime":
         setFormOpenCloseDatetime(
           operationParams["Form URL"],
-          params.datetime_open,
-          params.datetime_close,
+          params.datetimeOpen,
+          params.datetimeClose,
         )
         break;
       case "generateProfessorSheets":
         generateProfessorSheets(
-          params.spreadsheet_database_url,
+          params.spreadsheetDatabaseUrl,
           operationParams["Spreadsheet Assignment URL"],
         );
         break;
       case "updateAssignmentSheetsProtection":
         updateAssignmentSheetsProtection(
-          params.spreadsheet_database_url,
+          params.spreadsheetDatabaseUrl,
           operationParams["Spreadsheet Assignment URL"],
           operationParams["Supervision Level"],
-          parseInt(params.n_data_skipped),
+          parseInt(params.nDataSkipped),
         );
         break;
       case "setAssignmentSpreadsheetGrantRevokeDatetime":
         setAssignmentSpreadsheetGrantRevokeDatetime(
           operationParams["Spreadsheet Assignment URL"],
-          params.datetime_open,
-          params.datetime_close,
+          params.datetimeOpen,
+          params.datetimeClose,
           );
         break;
       case "removeAllEditorsAndProtections":
@@ -67,7 +75,7 @@ function doPost(e) {
       // ResponseManagement
       case "assignStudentsToSheets":
         assignStudentsToSheets(
-          params.spreadsheet_database_url,
+          params.spreadsheetDatabaseUrl,
           operationParams["Spreadsheet Assignment URL"],
           operationParams["Spreadsheet Form Responses URL"],
           formResponsesSheetName,
@@ -79,13 +87,13 @@ function doPost(e) {
       // SupervisionRelationsManagement
       case "saveStudentProfessorRelations":
         saveStudentProfessorRelations(
-          params.spreadsheet_database_url,
+          params.spreadsheetDatabaseUrl,
           operationParams["Spreadsheet Assignment URL"],
-          params.force_save === 'true',
+          params.forceSave === 'true',
         );
         break;
       default:
-        throw new UnknownOperationException(`Unknown operation_type "${params.operation_type}"`);
+        throw new UnknownOperationException(`Unknown operation_type "${params.operationType}"`);
     }
   } catch(err) {
     if (_isExceptionCustom(err)) {
@@ -95,17 +103,19 @@ function doPost(e) {
       throw err;
     }
   } finally {
-    Logger.log("[INFO] Operation '%s' finished", params.operation_type);
+    Logger.log("[INFO] Operation '%s' finished", params.operationType);
   }
 
   var template = HtmlService.createTemplateFromFile("index");
   template.serviceUrl = ScriptApp.getService().getUrl();
+  template.batchName = params.batchName == CONST.BATCH_NAME_DEFAULT ? CONST.HTML_DEFAULT_VALUES.BATCH_NAME : params.batchName;
+  template.spreadsheetDatabaseUrl = params.spreadsheetDatabaseUrl;
   if (errorMessage == "") {
     template.status = "OK";
-    template.statusMessage = `Operation "${params.operation_type}" executed successfully!`;
+    template.statusMessage = `Operation "${params.operationDisplayName}" executed successfully!`;
   } else {
     template.status = "ERROR";
-    template.statusMessage = `Operation "${params.operation_type}" execution failed! ${errorMessage}`;
+    template.statusMessage = `Operation "${params.operationDisplayName}" execution failed! ${errorMessage}`;
   }
   var html = template.evaluate();
   
@@ -119,6 +129,11 @@ function include(File) {
 function UnknownOperationException(message) {
   this.message = message;
   this.name = 'UnknownOperationException';
+}
+
+function WaitLockTimeoutException(message) {
+  this.message = message;
+  this.name = 'WaitLockTimeoutException';
 }
 
 function BatchNotFoundException(message) {
@@ -158,6 +173,7 @@ function ChosenStudentsTableDoesNotExist(message, debug=null) {
 
 function _isExceptionCustom(err) {
   return err instanceof UnknownOperationException ||
+    err instanceof WaitLockTimeoutException ||
     err instanceof BatchNotFoundException ||
     err instanceof AlreadyPreparedSpreadsheetException ||
     err instanceof UnpreparedSpreadsheetException ||

@@ -34,7 +34,7 @@
           <li><a class="nav-link" href=""><i class="far fa-clipboard mr-1"></i>Transaction</a></li> -->
         </ul>
         <ul class="navbar-nav">
-          <li><a class="nav-link" href="#"><i class="fas fa-user"></i>Manual Book</a></li>
+          <li><a class="nav-link" href="https://docs.google.com/presentation/d/1tfz7Qboz5A2QDbFXT1c4YCVXWRdkD2e9cIo9FsMI7oA/edit"><i class="fas fa-user"></i>Manual Book</a></li>
           <li><a class="nav-link" href="https://github.com/FerdiantJoshua/student-to-supervisor-thesis-assignment"><i class="fas fa-tachometer-alt"></i> Source Code</a></li>
         </ul>
       </div>
@@ -62,21 +62,20 @@
         <form action="<?= serviceUrl ?>" method="post" enctype="multipart/form-data" id="id_form">
           <h4>Operation</h4>
           <div class="form-row mb-4">
-              <select name="operation_type" placeholder="Operation Type" class="form-control mb-1" id="id_operation_type" required>
+              <select name="operationType" placeholder="Operation Type" class="form-control mb-1" id="id_operation_type" required>
                   <option value="">=== Choose An Operation ===</option>
                   <option value="populateFormDropdowns">Prepare Form Dropdowns</option>
                   <option value="setFormOpenCloseDatetime">Set Form Open/Close Datetime</option>
                   <option value="updateAssignmentSheetsProtection">Protect Assignment Sheets</option>
-                  <option value="assignStudentsToSheets">Assign Students from Form Response to Professor Sheets</option>
-                  <option value="setAssignmentSpreadsheetGrantRevokeDatetime">Set Professors Edit Access Grant/Revoke Datetime</option>
-                  <!-- <option value="changeAllViewersToEditors">Allow All Professors to Edit</option>
-                  <option value="changeAllEditorsToViewers">Disallow All Professors to Edit</option> -->
+                  <option value="assignStudentsToSheets">Assign Students to Student Queues</option>
+                  <option value="setAssignmentSpreadsheetGrantRevokeDatetime">Set Professors Grant/Revoke Edit Access Datetime</option>
                   <option value="saveStudentProfessorRelations">Save Student Professor Relations</option>
                   <option value="clearAllStudentQueues">Clear All Student Queues</option>
                   <option value="removeAllEditorsAndProtections" class="bg-warning text-dark switchable d-none">Remove All Editors And Protections from Assignment Sheets</option>
                   <option value="generateProfessorSheets" class="bg-warning text-dark switchable d-none">Generate Professor Sheets</option>
                   <option value="deleteAllProfessorSheets" class="bg-danger text-white switchable d-none">Delete All Professor Sheets</option>
                 </select>
+              <input type="text" name="operationDisplayName" value="" class="d-none" id="id_operation_display_name"></input>
               <div class="custom-control custom-switch">
                 <input type="checkbox" class="custom-control-input" id="id_special_operations_switch">
                 <label class="custom-control-label" for="id_special_operations_switch">Show Special Operations</label>
@@ -86,7 +85,7 @@
           <div class="form-row shown-param" id="batch_name_div">
               <div class="form-group col-12">
                   <label class="form-control-label" for="id_batch_name">Batch Name</label>
-                  <input type="text" name="batch_name" value="Batch-A-001" placeholder="Example: Batch-A-001" class="form-control" required id="id_batch_name">
+                  <input type="text" name="batchName" value="<?= batchName ?>" placeholder="Example: Batch-A-001" class="form-control" required id="id_batch_name">
                   <small class="form-text text-muted">The registration batch group</small>
                   <p id="id_temp_batch_name" class="d-none"></p>
               </div>
@@ -94,14 +93,14 @@
           <div class="form-row d-none" id="n_data_skipped_div">
               <div class="form-group col-12">
                   <label class="form-control-label" for="id_n_data_skipped">Amount of Data to be Skipped</label>
-                  <input type="number" name="n_data_skipped" value="0" placeholder="Example: 60" class="form-control" required id="id_n_data_skipped">
+                  <input type="number" name="nDataSkipped" value="0" placeholder="Example: 60" class="form-control" required id="id_n_data_skipped">
                   <small class="form-text text-danger">Leave this as is unless you're told to do otherwise</small>
               </div>
           </div>
           <div class="form-row d-none" id="force_save_div">
               <div class="form-group col-12">
                   <div class="form-check">
-                      <input class="form-check-input" type="checkbox" name="force_save" value="false" id="id_force_save">
+                      <input class="form-check-input" type="checkbox" name="forceSave" value="false" id="id_force_save">
                       <label class="form-check-label" for="id_force_save">
                         Force Save
                       </label>
@@ -112,12 +111,12 @@
           <div class="form-row mb-4 d-none" id="datetime_div">
               <div class="form-group col-6">
                   <label class="form-control-label" for="id_datetime_open" id="datetime_open_label">Open Datetime</label>
-                  <input type="text" name="datetime_open" value="" placeholder="(yyyy/mm/dd hh:mm) e.g. 2021/08/01 00:00" class="form-control" id="id_datetime_open">
+                  <input type="text" name="datetimeOpen" value="" placeholder="(yyyy/mm/dd hh:mm) e.g. 2021/08/01 00:00" class="form-control" id="id_datetime_open">
                   <small class="form-text text-muted">Enter a date earlier than now to run immediately</small>
               </div>
               <div class="form-group col-6">
                   <label class="form-control-label" for="id_datetime_close" id="datetime_close_label">Close Datetime</label>
-                  <input type="text" name="datetime_close" value="" placeholder="(yyyy/mm/dd hh:mm) e.g. 2021/08/08 00:00 (Format: yyyy/mm/dd hh:mm)" class="form-control" id="id_datetime_close">
+                  <input type="text" name="datetimeClose" value="" placeholder="(yyyy/mm/dd hh:mm) e.g. 2021/08/08 00:00" class="form-control" id="id_datetime_close">
                   <small class="form-text text-muted">Enter a date earlier than now to run immediately</small>
               </div>
               <p id="id_datetime_verbose_name" class="d-none"></p>
@@ -126,7 +125,7 @@
           <div class="form-row mb-4">
               <div class="form-group col-12">
                   <label class="form-control-label" for="id_spreadsheet_database_url">Database Spreadsheet URL</label>
-                  <input type="text" name="spreadsheet_database_url" value="https://docs.google.com/spreadsheets/d/1bhuvOg6tJOLQyvvyeXDEAUaGwG_dfgavuY6j0fWRjeg/edit" placeholder="Example: https://docs.google.com/spreadsheets/d/1bhuvOg6tJOLQyvvyeXDEAUaGwG_dfgavuY6j0fWRjeg/edit" class=" form-control" required id="id_spreadsheet_database_url">
+                  <input type="text" name="spreadsheetDatabaseUrl" value="<?= spreadsheetDatabaseUrl ?>" placeholder="Example: https://docs.google.com/spreadsheets/d/1bhuvOg6tJOLQyvvyeXDEAUaGwG_dfgavuY6j0fWRjeg/edit" class=" form-control" required id="id_spreadsheet_database_url">
                   <small class="form-text text-muted">Copy this value from your Google Spreadsheet URL</small>
               </div>
           </div>
@@ -155,8 +154,8 @@
         </form>
 
         <!-- Spinner -->
-        <div id="spinner" class="bg-secondary d-none" style="position: fixed; width: 100%; height: 100%; z-index: 2000; padding-top:25%; top: 0; left: 0; opacity: 0.5; filter: alpha(opacity=50);">
-          <div class="d-flex justify-content-center">
+        <div id="spinner" class="bg-secondary d-none" style="position: fixed; width: 100%; height: 100%; z-index: 2000; top: 0; left: 0; opacity: 0.5; filter: alpha(opacity=50);">
+          <div class="row h-100 justify-content-center align-items-center">
             <div class="spinner-border" style="width: 12rem; height: 12rem;" role="status">
               <span class="sr-only">Loading...</span>
             </div>
