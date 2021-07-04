@@ -5,7 +5,7 @@ const CONST = {
   "BATCH_NAME_DEFAULT": "DEFAULT",
   "HTML_DEFAULT_VALUES": {
     "BATCH_NAME": "Batch-A-001",
-    "SPREADSHEET_DB_URL": "https://docs.google.com/spreadsheets/d/1bhuvOg6tJOLQyvvyeXDEAUaGwG_dfgavuY6j0fWRjeg/edit",
+    "SPREADSHEET_DB_URL": "",
   },
 
   "COL_NAMES" : {
