@@ -15,6 +15,7 @@ const CONST = {
 
   "SHEET_NAMES": {
     // Assignment sheet
+    "MANUAL_BOOK": "MANUAL BOOK",
     "TEMPLATE": "Template",
 
     // DB Sheet

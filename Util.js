@@ -8,7 +8,8 @@ function getTableFromSheet(sheet, verboseTableName=null) {
 
 function isSheetNonData(sheetName) {
   let loweredSheetName = sheetName.toLowerCase();
-  return loweredSheetName == CONST.SHEET_NAMES.TEMPLATE.toLowerCase();
+  return loweredSheetName == CONST.SHEET_NAMES.TEMPLATE.toLowerCase() ||
+         loweredSheetName == CONST.SHEET_NAMES.MANUAL_BOOK.toLowerCase();
 }
 
 function getCol2Idx(idx2Col) {

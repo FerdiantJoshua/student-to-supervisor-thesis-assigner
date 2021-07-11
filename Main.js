@@ -96,9 +96,14 @@ function doPost(e) {
         throw new UnknownOperationException(`Unknown operation_type "${params.operationType}"`);
     }
   } catch(err) {
-    if (_isExceptionCustom(err)) {
-      console.error(err);
-      errorMessage = err.message;
+    if (isExceptionCustom(err)) {
+      if (err instanceof PartiallyExecutedOperationException) {
+        console.warn(`[WARNING] Partially executed operation for "${params.operationDisplayName}"!`);
+        errorMessage = "WARNING";
+      } else {
+        console.error(err);
+        errorMessage = err.message;
+      }
     } else {
       throw err;
     }
@@ -110,12 +115,15 @@ function doPost(e) {
   template.serviceUrl = ScriptApp.getService().getUrl();
   template.batchName = params.batchName == CONST.BATCH_NAME_DEFAULT ? CONST.HTML_DEFAULT_VALUES.BATCH_NAME : params.batchName;
   template.spreadsheetDatabaseUrl = params.spreadsheetDatabaseUrl;
-  if (errorMessage == "") {
-    template.status = "OK";
-    template.statusMessage = `Operation "${params.operationDisplayName}" executed successfully!`;
-  } else {
+  if (errorMessage == "WARNING") {
+    template.status = "WARNING";
+    template.statusMessage = `Operation "${params.operationDisplayName}" partially executed! Please check your email for further action!`;
+  } else if (errorMessage != "") {
     template.status = "ERROR";
     template.statusMessage = `Operation "${params.operationDisplayName}" execution failed! ${errorMessage}`;
+  } else {
+    template.status = "OK";
+    template.statusMessage = `Operation "${params.operationDisplayName}" executed successfully!`;
   }
   var html = template.evaluate();
   
@@ -125,59 +133,3 @@ function doPost(e) {
 function include(File) {
   return HtmlService.createHtmlOutputFromFile(File).getContent();
 };
-
-function UnknownOperationException(message) {
-  this.message = message;
-  this.name = 'UnknownOperationException';
-}
-
-function WaitLockTimeoutException(message) {
-  this.message = message;
-  this.name = 'WaitLockTimeoutException';
-}
-
-function BatchNotFoundException(message) {
-  this.message = message;
-  this.name = 'BatchNotFoundException';
-}
-
-function AlreadyPreparedSpreadsheetException(message, debug=null) {
-  this.message = message;
-  this.name = 'AlreadyPreparedSpreadsheetException';
-  this.debug = debug;
-}
-
-function UnpreparedSpreadsheetException(message, debug=null) {
-  this.message = message;
-  this.name = 'UnpreparedSpreadsheetException';
-  this.debug = debug;
-}
-
-function StudentsAlreadyAssignedException(message, debug=null) {
-  this.message = message;
-  this.name = 'StudentsAlreadyAssignedException';
-  this.debug = debug;
-}
-
-function ChosenStudentsTableSizeMismatch(message, debug=null) {
-  this.message = message;
-  this.name = 'ChosenStudentsTableSizeMismatch';
-  this.debug = debug;
-}
-
-function ChosenStudentsTableDoesNotExist(message, debug=null) {
-  this.message = message;
-  this.name = 'ChosenStudentsTableDoesNotExist';
-  this.debug = debug;
-}
-
-function _isExceptionCustom(err) {
-  return err instanceof UnknownOperationException ||
-    err instanceof WaitLockTimeoutException ||
-    err instanceof BatchNotFoundException ||
-    err instanceof AlreadyPreparedSpreadsheetException ||
-    err instanceof UnpreparedSpreadsheetException ||
-    err instanceof StudentsAlreadyAssignedException ||
-    err instanceof ChosenStudentsTableSizeMismatch ||
-    err instanceof ChosenStudentsTableDoesNotExist
-}

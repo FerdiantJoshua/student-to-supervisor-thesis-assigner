@@ -40,13 +40,13 @@ function assignStudentsToSheets(spreadsheetDBUrl, spreadsheetAssignmentUrl, spre
   let formResponsesSheet = SpreadsheetApp.openByUrl(spreadsheetResponsesUrl).getSheetByName(formResponsesSheetName);
   let tableObject = getTableFromSheet(formResponsesSheet, "formResponses");
   let {data, col2Idx} = tableObject;
-  let {"NRP - Nama": nrpNameIdx, "Email Address": emailIdx, additionalColName: currSupervisorsIdx} = col2Idx;
+  let {"NRP - Nama": nrpNameIdx, "Email Address": emailIdx, "Pilihan Dosen": chosenSupervisorIdx} = col2Idx;
 
   _omitStudentsWithInvalidEmail(data, emailIdx, nrpNameIdx);
 
-  // The "Student Queue Table" has additional column which doesn't come from "Form Responses", but from "Supervision Table" in spreadsheetDB
-  currSupervisorsIdx = _insertExistingSupervisorsToStudentResponses(data, nrpNameIdx, supervisionsGroupedByStudent);
-  col2Idx[CONST.COL_NAMES.PEMBIMBING_LAIN] = currSupervisorsIdx;
+  // The "Student Queue Table" has additional column which doesn't come from "Form Responses" but from "Supervision Table" in spreadsheetDB
+  _filterAndInsertExistingSupervisors(data, nrpNameIdx, chosenSupervisorIdx, supervisionsGroupedByStudent);
+  col2Idx[CONST.COL_NAMES.PEMBIMBING_LAIN] = data[0].length - 1;
   console.log('PURUYEAH', data)
   
   // Assign students to professors
@@ -105,16 +105,35 @@ function _omitStudentsWithInvalidEmail(data, emailIdx, nrpNameIdx) {
 }
 
 // Insert students' current supervisor in-place; Return index of the new column
-function _insertExistingSupervisorsToStudentResponses(data, nrpNameIdx, supervisionsGroupedByStudent) {
-  console.log("supervisionsGroupedByStudent", supervisionsGroupedByStudent);
-  for(let i = 0; i < data.length; i++) {
+function _filterAndInsertExistingSupervisors(data, nrpNameIdx, chosenSupervisorIdx, supervisionsGroupedByStudent) {
+  // console.log("supervisionsGroupedByStudent", supervisionsGroupedByStudent);
+  var i = 0;
+  while (i < data.length) {
     let studentName = data[i][nrpNameIdx].split(' - ', 2)[1];
-    let supervisors = supervisionsGroupedByStudent[studentName];
-    data[i].push(
-      supervisors != null ? supervisors.map(val => `${val[1]}: ${val[0]}`).join("\n") : ""
-    )
+    let currentSupervisors = supervisionsGroupedByStudent[studentName];
+    let chosenSupervisor = data[i][chosenSupervisorIdx].split(' - ', 1)[0];
+    let chosenSupervisorLevel = _getSupervisorLevel(currentSupervisors, chosenSupervisor)
+    if (chosenSupervisorLevel != -1) {
+      console.warn(
+        "[WARNING] Student with name '%s' is omitted due to his/her currentSupervisor(s) contains his/her chosenSupervisor '%s'. ('%s' on level '%s')",
+        studentName, chosenSupervisor, chosenSupervisor, chosenSupervisorLevel
+      )
+      data.splice(i, 1);
+    } else {
+      data[i].push(
+        currentSupervisors != null ? currentSupervisors.map(val => `${val[1]}: ${val[0]}`).join("\n") : ""
+      )
+      i += 1;
+    }
   }
-  return data[0].length - 1;
+}
+
+function _getSupervisorLevel(currentSupervisors, chosenSupervisor) {
+  for(let i = 0; i < currentSupervisors.length; i++) {
+    if (chosenSupervisor == currentSupervisors[i][0])
+      return currentSupervisors[i][1];
+  }
+  return -1;
 }
 
 function clearAllStudentQueues(spreadsheetAssignmentUrl) {

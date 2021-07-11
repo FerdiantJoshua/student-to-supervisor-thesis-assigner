@@ -236,6 +236,8 @@ function updateAssignmentSheetsProtection(spreadsheetDBUrl, spreadsheetAssignmen
   _setUserAsOnlyEditorOfSpreadsheet(me, ssTarget);
 
   // Protect non-professor sheets protection
+  let manualSheet = ssTarget.getSheetByName(CONST.SHEET_NAMES.MANUAL_BOOK);
+  _setUserAsOnlyEditorOfProtection(me, manualSheet.protect().setDescription('Admin Only'));
   _setUserAsOnlyEditorOfProtection(me, templateSheet.protect().setDescription('Admin Only'));
 
   var emailsToAddAsEditor = []
@@ -251,7 +253,7 @@ function updateAssignmentSheetsProtection(spreadsheetDBUrl, spreadsheetAssignmen
           message=`Operation "updateAssignmentSheetsProtection" was stopped due to timeout.\n\n`
           + `Please rerun the operation with this parameter "Amount of Data to be Skipped = ${i}"`
         );
-        return
+        throw new PartiallyExecutedOperationException();
       }
 
       let professorSheet = ssTarget.getSheetByName(professorName);
