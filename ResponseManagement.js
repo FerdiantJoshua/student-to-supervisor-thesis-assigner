@@ -129,6 +129,9 @@ function _filterAndInsertExistingSupervisors(data, nrpNameIdx, chosenSupervisorI
 }
 
 function _getSupervisorLevel(currentSupervisors, chosenSupervisor) {
+  if (typeof currentSupervisors == "undefined") {
+    return -1
+  }
   for(let i = 0; i < currentSupervisors.length; i++) {
     if (chosenSupervisor == currentSupervisors[i][0])
       return currentSupervisors[i][1];
