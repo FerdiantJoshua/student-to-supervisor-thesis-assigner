@@ -33,7 +33,7 @@ function _updateDropdownName(form, nameDropdownId, studentSheet, namesToOmit) {
 
   let tableObject = getTableFromSheet(studentSheet, verboseTableName=CONST.SHEET_NAMES.STUDENTS);
   let {data, col2Idx} = tableObject;
-  let {"Nama": nameIdx, "NRP": nrpIdx} = col2Idx;
+  let {"NRP": nrpIdx, "Nama": nameIdx, "Is Skipped from Registration Form": isSkippedIdx} = col2Idx;
 
   let namesToOmitSet = new Set(namesToOmit);
 
@@ -41,7 +41,7 @@ function _updateDropdownName(form, nameDropdownId, studentSheet, namesToOmit) {
   var formItemsStudent = [];
   for(let i = 0; i < data.length; i++) {
     let row = data[i];
-    if (row[nameIdx] != "" && !namesToOmitSet.delete(row[nameIdx])) {
+    if (row[nameIdx] != "" && !row[isSkippedIdx] && !namesToOmitSet.delete(row[nameIdx])) {
       formItemsStudent.push(`${row[nrpIdx]} - ${row[nameIdx]}`);
     }
   }
@@ -82,7 +82,7 @@ function _updateDropdownProfessor(form, professorDropdownId, professorSheet, nam
 
   let tableObject = getTableFromSheet(professorSheet, verboseTableName=CONST.SHEET_NAMES.PROFESSORS);
   let {data, col2Idx} = tableObject;
-  let {"Nama": nameIdx, "Kelompok Keilmuan": topicIdx} = col2Idx;
+  let {"Nama": nameIdx, "Kelompok Keilmuan": topicIdx, "Is Skipped from Registration Form": isSkippedIdx} = col2Idx;
 
   let namesToOmitSet = new Set(namesToOmit);
 
@@ -90,7 +90,7 @@ function _updateDropdownProfessor(form, professorDropdownId, professorSheet, nam
   var formItemsProfessor = [];
   for(let i = 0; i < data.length; i++) {
     let row = data[i];
-    if (row[nameIdx] != "" && !namesToOmitSet.delete(row[nameIdx])) {
+    if (row[nameIdx] != "" && !row[isSkippedIdx] && !namesToOmitSet.delete(row[nameIdx])) {
       formItemsProfessor.push(`${row[nameIdx]} - ${row[topicIdx]}`);
     }
   }
