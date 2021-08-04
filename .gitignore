@@ -1,5 +1,6 @@
 backup/
 data/
+_documentation/
 
 *.txt
 *.xls

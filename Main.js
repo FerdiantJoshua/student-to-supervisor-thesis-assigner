@@ -1,6 +1,9 @@
+const SERVICE_URL = ScriptApp.getService().getUrl();
+// const SERVICE_URL = "https://script.google.com/macros/s/AKfycbzhpWFRSi4qexSomRTp_Onxk1sguA_3ClgMuQmdPLc/dev";
+
 function doGet(e) {  
   var template = HtmlService.createTemplateFromFile("index");
-  template.serviceUrl = ScriptApp.getService().getUrl();
+  template.serviceUrl = SERVICE_URL;
   template.batchName = CONST.HTML_DEFAULT_VALUES.BATCH_NAME;
   template.spreadsheetDatabaseUrl = CONST.HTML_DEFAULT_VALUES.SPREADSHEET_DB_URL;
   template.status = "-";
@@ -112,7 +115,7 @@ function doPost(e) {
   }
 
   var template = HtmlService.createTemplateFromFile("index");
-  template.serviceUrl = ScriptApp.getService().getUrl();
+  template.serviceUrl = SERVICE_URL;
   template.batchName = params.batchName == CONST.BATCH_NAME_DEFAULT ? CONST.HTML_DEFAULT_VALUES.BATCH_NAME : params.batchName;
   template.spreadsheetDatabaseUrl = params.spreadsheetDatabaseUrl;
   if (errorMessage == "WARNING") {
