@@ -39,7 +39,7 @@
     // Initialize consts
     const requireParameters = {
       "batchName": {
-        "actionSets": new Set(["populateFormDropdowns", "setFormOpenCloseDatetime", "updateAssignmentSheetsProtection", "assignStudentsToSheets"]),
+        "actionSets": new Set(["populateFormDropdowns", "setFormOpenCloseDatetime", "updateAssignmentSheetsProtection", "assignStudentsToSheets", "setAssignmentSpreadsheetGrantRevokeDatetime"]),
         "dom": $("#batch_name_div"),
         "sideEffectsHide": [() => inputBatchName.val(BATCH_NAME_DEFAULT)],
         "sideEffectsShow": [() => inputBatchName.val(tempBatchName.html())],
