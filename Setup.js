@@ -232,7 +232,9 @@ function updateAssignmentSheetsProtection(spreadsheetDBUrl, spreadsheetAssignmen
   }
 
   let me = Session.getEffectiveUser();
-  // NOTE: this line must be executed before "_updateSheetProtection" to prevent existing editors to have access to the protected sheet
+
+  // NOTE: this line must be executed before "_initializeSheetProtection" and "_updateSheetProtection" 
+  //       to prevent existing editors to have access to the protected sheet
   _setUserAsOnlyEditorOfSpreadsheet(me, ssTarget);
 
   // Protect non-professor sheets protection
@@ -248,6 +250,7 @@ function updateAssignmentSheetsProtection(spreadsheetDBUrl, spreadsheetAssignmen
     if(professorName != "") {
       // Self-terminate on internal timeout with email notification to let user continue the operation
       if ((new Date().getTime() - startTime) / 1000 >= CONST.APP_TIMEOUT_SECONDS){
+        ssTarget.addViewers(emailsToAddAsEditor);  // Invite some partially processed professors to view spreadsheet by their email
         emailReportToSelf(
           subject="Partially Complete Operation Notification",
           message=`Operation "updateAssignmentSheetsProtection" was stopped due to timeout.\n\n`
@@ -286,8 +289,7 @@ function updateAssignmentSheetsProtection(spreadsheetDBUrl, spreadsheetAssignmen
     }
   }
   
-  // Invite professors to view spreadsheet by their email
-  ssTarget.addViewers(emailsToAddAsEditor);
+  ssTarget.addViewers(emailsToAddAsEditor);  // Invite professors to view spreadsheet by their email
 }
 
 function _initializeSheetProtection(
